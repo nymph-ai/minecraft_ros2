@@ -79,7 +79,11 @@ export JAVA_OPTS="-Dfml.earlyWindowControl=false -Dorg.lwjgl.opengl.Display.allo
 
 echo "[startClient] JAVA_OPTS=$JAVA_OPTS"
 echo "[startClient] Starting Xvfb and runClient.sh..."
+echo "[startClient] Note: First run will download Minecraft and dependencies (may take 5-10 minutes)..."
+echo ""
 
 # Start Xvfb with proper GLX configuration for software rendering
-exec xvfb-run -a -s "-screen 0 1920x1080x24 -fbdir /tmp +extension GLX +render -noreset -ac" ./runClient.sh
+# Note: -s takes server args as a single quoted string
+# Use sh -c to properly handle the command and ensure output goes to stdout
+exec sh -c 'xvfb-run -a -s "-screen 0 1920x1080x24 -fbdir /tmp +extension GLX +render -noreset -ac" ./runClient.sh 2>&1'
 EOF
