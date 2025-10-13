@@ -27,6 +27,11 @@ minecraft {
             workingDirectory project.file('run')
             property 'forge.logging.markers', 'REGISTRIES'
             property 'forge.logging.console.level', 'debug'
+            // Fix for headless/software rendering
+            jvmArgs '-Dfml.earlyWindowControl=false'
+            jvmArgs '-Dorg.lwjgl.opengl.Display.allowSoftwareOpenGL=true'
+            jvmArgs '-Dorg.lwjgl.util.DebugLoader=true'
+            jvmArgs '-Dorg.lwjgl.system.allocator=system'
         }
 
         client {
