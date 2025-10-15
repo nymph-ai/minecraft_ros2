@@ -11,7 +11,7 @@ import java.lang.Object;
 
 public class NetworkHandler {
     public static final SimpleChannel CHANNEL = ChannelBuilder.named(
-        new ResourceLocation(minecraft_ros2.MOD_ID, "main"))
+        ResourceLocation.fromNamespaceAndPath(minecraft_ros2.MOD_ID, "main"))
         .serverAcceptedVersions((status, version) -> true)
         .clientAcceptedVersions((status, version) -> true)
         .networkProtocolVersion(1)

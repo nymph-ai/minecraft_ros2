@@ -13,7 +13,7 @@ import net.minecraft.world.entity.player.Inventory;
 import com.mojang.blaze3d.platform.InputConstants;
 
 public class RedStonePubSubBlockScreen extends AbstractContainerScreen<RedStonePubSubBlockContainer> {
-    private static final ResourceLocation BG = new ResourceLocation(
+    private static final ResourceLocation BG = ResourceLocation.fromNamespaceAndPath(
         minecraft_ros2.MOD_ID, "textures/gui/named_block_bg.png"
     );
     private EditBox nameField;

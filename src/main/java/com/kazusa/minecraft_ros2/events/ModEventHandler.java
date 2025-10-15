@@ -44,6 +44,7 @@ public class ModEventHandler {
     /**
      * Process ROS2 messages during client tick
      */
+    @SuppressWarnings("removal")
     @SubscribeEvent
     public static void onClientTick(TickEvent.ClientTickEvent event) {
         // Only process on the end phase to avoid processing twice per tick

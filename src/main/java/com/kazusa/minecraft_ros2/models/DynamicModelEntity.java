@@ -204,7 +204,7 @@ public class DynamicModelEntity extends Mob implements GeoEntity {
     }
 
     public void setModelDimensions() {
-        var geoLoc = new ResourceLocation(
+        var geoLoc = ResourceLocation.fromNamespaceAndPath(
             "runtime_geo", "geo/dynamic_model_" + this.getModelId() + ".geo.json");
         computeDimensionsFromGeoJson(geoLoc);
         adjustDimensionsAndRefresh(computedWidthInM, computedHeightInM, computedDepthInM);

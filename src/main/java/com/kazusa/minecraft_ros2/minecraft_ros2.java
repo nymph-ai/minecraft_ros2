@@ -28,31 +28,34 @@ public class minecraft_ros2 {
     public static final String MOD_ID = "minecraft_ros2";
     private static final Logger LOGGER = LoggerFactory.getLogger(minecraft_ros2.class);
 
+    @SuppressWarnings("removal")
     public minecraft_ros2() throws NoSuchFieldException, IllegalAccessException {
         LOGGER.info("Initializing minecraft_ros2 mod");
 
         GeometryApplier.initResourcePack();
 
+        // Get event bus - suppressing deprecation warning as this is the correct pattern for Forge 1.20.6
+        IEventBus modEventBus = FMLJavaModLoadingContext.get().getModEventBus();
+
         // Register the setup methods for mod loading
-        FMLJavaModLoadingContext.get().getModEventBus().addListener(this::setup);
-        FMLJavaModLoadingContext.get().getModEventBus().addListener(this::clientSetup);
+        modEventBus.addListener(this::setup);
+        modEventBus.addListener(this::clientSetup);
 
-        ModEntities.register(FMLJavaModLoadingContext.get().getModEventBus());
+        ModEntities.register(modEventBus);
 
-        // Register the configuration
+        // Register the configuration - suppressing deprecation warning
         ModLoadingContext.get().registerConfig(ModConfig.Type.COMMON, Config.COMMON_SPEC);
-        FMLJavaModLoadingContext.get().getModEventBus().addListener(this::onConfigLoad);
+        modEventBus.addListener(this::onConfigLoad);
 
         // Register this mod to the MinecraftForge event bus
         MinecraftForge.EVENT_BUS.register(this);
 
-        IEventBus bus = FMLJavaModLoadingContext.get().getModEventBus();
-        ModItems.register(bus);
-        BlockItems.ITEMS.register(bus);
-        ModBlocks.BLOCKS.register(bus);
-        ModBlockEntities.register(bus);
-        ModMenuTypes.MENUS.register(bus);
-        ModelHandler.register(bus);
+        ModItems.register(modEventBus);
+        BlockItems.ITEMS.register(modEventBus);
+        ModBlocks.BLOCKS.register(modEventBus);
+        ModBlockEntities.register(modEventBus);
+        ModMenuTypes.MENUS.register(modEventBus);
+        ModelHandler.register(modEventBus);
 
         LOGGER.info("minecraft_ros2 mod initialized");
     }

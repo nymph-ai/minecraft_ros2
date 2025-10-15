@@ -16,23 +16,23 @@ public class DynamicModelEntityModel extends GeoModel<DynamicModelEntity> {
     public static final int MAX_MODEL_COUNT = 10; // 動的モデルの数
     // geometry.json のパス
     private static final ResourceLocation DEFAULT_GEO =
-        new ResourceLocation("minecraft_ros2", "geo/custom_entity.geo.json");
+        ResourceLocation.fromNamespaceAndPath("minecraft_ros2", "geo/custom_entity.geo.json");
     private static final List<ResourceLocation> CUSTOM_GEO_LIST = List.of(
-        new ResourceLocation("runtime_geo", "geo/dynamic_model_0.geo.json"),
-        new ResourceLocation("runtime_geo", "geo/dynamic_model_1.geo.json"),
-        new ResourceLocation("runtime_geo", "geo/dynamic_model_2.geo.json"),
-        new ResourceLocation("runtime_geo", "geo/dynamic_model_3.geo.json"),
-        new ResourceLocation("runtime_geo", "geo/dynamic_model_4.geo.json"),
-        new ResourceLocation("runtime_geo", "geo/dynamic_model_5.geo.json"),
-        new ResourceLocation("runtime_geo", "geo/dynamic_model_6.geo.json"),
-        new ResourceLocation("runtime_geo", "geo/dynamic_model_7.geo.json"),
-        new ResourceLocation("runtime_geo", "geo/dynamic_model_8.geo.json"),
-        new ResourceLocation("runtime_geo", "geo/dynamic_model_9.geo.json")
+        ResourceLocation.fromNamespaceAndPath("runtime_geo", "geo/dynamic_model_0.geo.json"),
+        ResourceLocation.fromNamespaceAndPath("runtime_geo", "geo/dynamic_model_1.geo.json"),
+        ResourceLocation.fromNamespaceAndPath("runtime_geo", "geo/dynamic_model_2.geo.json"),
+        ResourceLocation.fromNamespaceAndPath("runtime_geo", "geo/dynamic_model_3.geo.json"),
+        ResourceLocation.fromNamespaceAndPath("runtime_geo", "geo/dynamic_model_4.geo.json"),
+        ResourceLocation.fromNamespaceAndPath("runtime_geo", "geo/dynamic_model_5.geo.json"),
+        ResourceLocation.fromNamespaceAndPath("runtime_geo", "geo/dynamic_model_6.geo.json"),
+        ResourceLocation.fromNamespaceAndPath("runtime_geo", "geo/dynamic_model_7.geo.json"),
+        ResourceLocation.fromNamespaceAndPath("runtime_geo", "geo/dynamic_model_8.geo.json"),
+        ResourceLocation.fromNamespaceAndPath("runtime_geo", "geo/dynamic_model_9.geo.json")
     );
 
     // テクスチャのパス（お好きなものを）
     private static final ResourceLocation TEX =
-        new ResourceLocation("minecraft_ros2", "textures/entity/custom_entity.png");
+        ResourceLocation.fromNamespaceAndPath("minecraft_ros2", "textures/entity/custom_entity.png");
     // アニメーションファイルが無ければ同じパスで空ファイル or 無視して OK
     private static final ResourceLocation ANIM = null;
 

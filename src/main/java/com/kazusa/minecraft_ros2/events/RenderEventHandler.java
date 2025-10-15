@@ -10,6 +10,7 @@ import net.minecraftforge.fml.common.Mod;
 public class RenderEventHandler {
     private static int renderTickCount = 0;
 
+    @SuppressWarnings("removal")
     @SubscribeEvent
     public static void onRenderTick(TickEvent.RenderTickEvent event) {
         if (event.phase == TickEvent.Phase.END) {

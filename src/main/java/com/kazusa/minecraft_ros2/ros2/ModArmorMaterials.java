@@ -30,7 +30,7 @@ public class ModArmorMaterials {
         Supplier<Ingredient> repairMat = () -> Ingredient.of(Items.DIAMOND);
         List<ArmorMaterial.Layer> layers = List.of(
             new ArmorMaterial.Layer(
-                new ResourceLocation(MODID, "mystic"),
+                ResourceLocation.fromNamespaceAndPath(MODID, "mystic"),
                 "",
                 false
             )

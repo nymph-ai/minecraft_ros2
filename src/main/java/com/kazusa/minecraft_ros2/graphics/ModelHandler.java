@@ -8,7 +8,7 @@ import net.minecraftforge.eventbus.api.SubscribeEvent;
 
 public class ModelHandler {
     public static final ModelLayerLocation LIDAR_LAYER = new ModelLayerLocation(
-            new ResourceLocation("minecraft", "player"), "minecraft_ros2:lidar");
+            ResourceLocation.fromNamespaceAndPath("minecraft", "player"), "minecraft_ros2:lidar");
 
     @SubscribeEvent
     public void onRegisterLayerDefinitions(EntityRenderersEvent.RegisterLayerDefinitions event) {
