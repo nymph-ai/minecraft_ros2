@@ -32,10 +32,26 @@ minecraft {
             jvmArgs '-Dorg.lwjgl.opengl.Display.allowSoftwareOpenGL=true'
             jvmArgs '-Dorg.lwjgl.util.DebugLoader=true'
             jvmArgs '-Dorg.lwjgl.system.allocator=system'
+            // Disable narrator to avoid flite library requirement
+            jvmArgs '-Dcom.mojang.text2speech.disable=true'
         }
 
         client {
             property 'forge.enabledGameTestNamespaces', mod_id
+
+            // Support Microsoft authentication via environment variables
+            def mcUsername = System.getenv('MC_USERNAME')
+            def mcUuid = System.getenv('MC_UUID')
+            def mcAccessToken = System.getenv('MC_ACCESS_TOKEN')
+
+            if (mcUsername && mcUuid && mcAccessToken) {
+                println "Using authenticated session for user: ${mcUsername}"
+                args '--username', mcUsername
+                args '--uuid', mcUuid
+                args '--accessToken', mcAccessToken
+            } else {
+                println "No authentication credentials provided, using offline mode"
+            }
         }
 
         server {
