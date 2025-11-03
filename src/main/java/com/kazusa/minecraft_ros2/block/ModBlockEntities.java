@@ -17,9 +17,4 @@ public class ModBlockEntities {
                 .of(RedStonePubSubBlockEntity::new, ModBlocks.REDSTONE_PUB_SUB.get())
                 .build(null)
         );
-
-    // Register method to be called in main mod class
-    public static void register(net.minecraftforge.eventbus.api.IEventBus bus) {
-        BLOCK_ENTITIES.register(bus);
-    }
 }

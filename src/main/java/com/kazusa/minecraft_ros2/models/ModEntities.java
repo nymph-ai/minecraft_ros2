@@ -6,7 +6,6 @@ import net.minecraft.world.entity.MobCategory;
 import net.minecraftforge.registries.DeferredRegister;
 import net.minecraftforge.registries.ForgeRegistries;
 import net.minecraftforge.registries.RegistryObject;
-import net.minecraftforge.eventbus.api.IEventBus;
 
 public class ModEntities {
     // DeferredRegister を使って EntityType の登録を管理
@@ -26,8 +25,4 @@ public class ModEntities {
                 // 結合して EntityType を生成
                 .build(minecraft_ros2.MOD_ID + ":custom_entity")
         );
-
-    public static void register(IEventBus bus) {
-        ENTITIES.register(bus);
-    }
 }

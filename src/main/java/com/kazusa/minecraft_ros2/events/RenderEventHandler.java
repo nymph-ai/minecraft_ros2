@@ -3,7 +3,7 @@ package com.kazusa.minecraft_ros2.events;
 import com.kazusa.minecraft_ros2.ros2.ROS2Manager;
 import com.kazusa.minecraft_ros2.ros2.ImagePublisher;
 import net.minecraftforge.event.TickEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.eventbus.api.listener.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 
 @Mod.EventBusSubscriber

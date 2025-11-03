@@ -1,10 +1,11 @@
 package com.kazusa.minecraft_ros2.events;
 
+import com.kazusa.minecraft_ros2.minecraft_ros2;
 import com.kazusa.minecraft_ros2.ros2.ROS2Manager;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.event.server.ServerStartingEvent;
 import net.minecraftforge.event.server.ServerStoppingEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.eventbus.api.listener.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -12,7 +13,7 @@ import org.slf4j.LoggerFactory;
 /**
  * Handles Forge events for the minecraft_ros2 mod
  */
-@Mod.EventBusSubscriber
+@Mod.EventBusSubscriber(modid = minecraft_ros2.MOD_ID, bus = Mod.EventBusSubscriber.Bus.FORGE)
 public class ModEventHandler {
     private static final Logger LOGGER = LoggerFactory.getLogger(ModEventHandler.class);
     private static boolean initialized = false;

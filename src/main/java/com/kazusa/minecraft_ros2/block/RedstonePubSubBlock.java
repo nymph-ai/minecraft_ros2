@@ -11,7 +11,6 @@ import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
-import net.minecraft.world.ItemInteractionResult;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
@@ -94,7 +93,7 @@ public class RedstonePubSubBlock extends Block implements EntityBlock {
     }
 
     @Override
-    public ItemInteractionResult useItemOn(
+    public InteractionResult useItemOn(
         ItemStack held,
         BlockState state,
         Level world,
@@ -121,7 +120,7 @@ public class RedstonePubSubBlock extends Block implements EntityBlock {
                 }
             }
             // クライアント／サーバー両方で「成功扱い」を返す
-            return ItemInteractionResult.sidedSuccess(world.isClientSide);
+            return InteractionResult.sidedSuccess(world.isClientSide);
         }
         return super.useItemOn(held, state, world, pos, player, hand, hit);
     }

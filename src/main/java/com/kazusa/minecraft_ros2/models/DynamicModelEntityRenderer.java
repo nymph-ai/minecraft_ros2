@@ -1,11 +1,11 @@
 package com.kazusa.minecraft_ros2.models;
 
 import net.minecraft.client.renderer.entity.EntityRendererProvider;
-
+import net.minecraft.client.renderer.entity.state.LivingEntityRenderState;
 import software.bernie.geckolib.renderer.GeoEntityRenderer;
 
 public class DynamicModelEntityRenderer
-    extends GeoEntityRenderer<DynamicModelEntity>
+    extends GeoEntityRenderer<DynamicModelEntity, LivingEntityRenderState>
 {
     public DynamicModelEntityRenderer(EntityRendererProvider.Context ctx) {
         super(ctx, new DynamicModelEntityModel());

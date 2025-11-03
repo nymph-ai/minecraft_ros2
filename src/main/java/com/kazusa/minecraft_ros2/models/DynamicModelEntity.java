@@ -16,7 +16,7 @@ import net.minecraft.world.entity.ai.attributes.Attributes;
 import software.bernie.geckolib.animatable.GeoEntity;
 import software.bernie.geckolib.animatable.instance.AnimatableInstanceCache;
 import software.bernie.geckolib.util.GeckoLibUtil;
-import software.bernie.geckolib.animation.AnimatableManager;
+import software.bernie.geckolib.animatable.manager.AnimatableManager;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
