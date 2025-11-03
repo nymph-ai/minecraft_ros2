@@ -1,0 +1,13 @@
+md5: b9b6d08d03e73230948cfefeef7f92d6
+frozen: true
+deps:
+- checksum: '"525fb3c1055c5633a705fdc23d330ab1"'
+  size: 1341064
+  hash: md5
+  path: 
+    https://mediafilez.forgecdn.net/files/7164/564/geckolib-forge-1.21.10-5.3-alpha-3.jar
+outs:
+- md5: 525fb3c1055c5633a705fdc23d330ab1
+  size: 1341064
+  hash: md5
+  path: geckolib-forge-1.21.10-5.3-alpha-3.jar

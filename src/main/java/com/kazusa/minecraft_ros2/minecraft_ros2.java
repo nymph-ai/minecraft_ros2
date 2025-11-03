@@ -34,7 +34,7 @@ public class minecraft_ros2 {
 
         GeometryApplier.initResourcePack();
 
-        // Get event bus - suppressing deprecation warning as this is the correct pattern for Forge 1.20.6
+        // Get event bus - suppressing deprecation warning as this remains the correct pattern for Forge 1.21.10
         IEventBus modEventBus = FMLJavaModLoadingContext.get().getModEventBus();
 
         // Register the setup methods for mod loading

@@ -1,3 +1,12 @@
+1.21.x Changelog
+60.0
+====
+ - 60.0.15 1.21.10 Forge/MC toolchain bump
+
+58.1
+====
+ - 58.1.0 1.21.8 Initial Update
+
 1.20.x Changelog
 50.1
 ====
