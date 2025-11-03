@@ -1,5 +1,7 @@
 package com.kazusa.minecraft_ros2.ros2;
 
+import com.kazusa.minecraft_ros2.integration.baritone.BaritoneGoalSubscriber;
+import com.kazusa.minecraft_ros2.integration.baritone.BaritoneIntegration;
 import com.kazusa.minecraft_ros2.models.DynamicModelEntity;
 import com.kazusa.minecraft_ros2.config.Config;
 import com.kazusa.minecraft_ros2.block.RedstonePubSubBlock;
@@ -35,6 +37,7 @@ public final class ROS2Manager {
     private SurroundingBlockArrayPublisher surroundingBlockArrayPublisher;
     private LivingEntitiesPublisher livingEntitiesPublisher;
     private PlayerStatusPublisher playerStatusPublisher;
+    private BaritoneGoalSubscriber baritoneGoalSubscriber;
 
     private SpawnEntityService spawnEntityService;
     private DigBlockService digBlockService;
@@ -81,6 +84,15 @@ public final class ROS2Manager {
                 groundTruthPublisher = new GroundTruthPublisher();
                 surroundingBlockArrayPublisher = new SurroundingBlockArrayPublisher();
 
+                if (BaritoneIntegration.isAvailable()) {
+                    try {
+                        baritoneGoalSubscriber = new BaritoneGoalSubscriber();
+                    } catch (Exception e) {
+                        LOGGER.error("Failed to initialize BaritoneGoalSubscriber", e);
+                        baritoneGoalSubscriber = null;
+                    }
+                }
+
                 if (Config.COMMON.enableDebugDataStreaming.get()) {
                     LOGGER.info("Debug data stream enabled");
                     livingEntitiesPublisher = new LivingEntitiesPublisher();
@@ -111,6 +123,10 @@ public final class ROS2Manager {
                             RCLJava.spinSome(imuPublisher);
                             RCLJava.spinSome(groundTruthPublisher);
                             RCLJava.spinSome(surroundingBlockArrayPublisher);
+
+                            if (baritoneGoalSubscriber != null) {
+                                RCLJava.spinSome(baritoneGoalSubscriber);
+                            }
 
                             RCLJava.spinSome(spawnEntityService);
                             RCLJava.spinSome(digBlockService);
@@ -191,6 +207,7 @@ public final class ROS2Manager {
             
             twistSubscriber = null;
             commandSubscriber = null;
+            baritoneGoalSubscriber = null;
         }
     }
     

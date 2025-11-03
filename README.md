@@ -4,6 +4,10 @@
 
 A Minecraft mod that enables communication with ROS 2. It allows for LiDAR simulation, sensor data transmission, command reception, and more.
 
+## Optional Integrations
+
+- **Baritone pathfinding** – When the [Baritone](https://github.com/cabaletta/baritone) client mod is present, `minecraft_ros2` exposes ROS 2 topics for submitting navigation targets (`/minecraft/baritone/goal`) and cancelling active runs (`/minecraft/baritone/cancel`).
+
 ## Documents
 - [**English Document**](https://minecraft-ros2.github.io/minecraft_ros2/)
 - [**日本語ドキュメント**](https://minecraft-ros2.github.io/minecraft_ros2/jp/)
