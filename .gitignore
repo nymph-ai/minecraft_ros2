@@ -34,3 +34,11 @@ node_modules
 
 # macOS
 .DS_Store
+
+# local development artifacts
+.devcontainer/
+caches/
+daemon/
+native/
+ros2_java_ws/
+wrapper/
