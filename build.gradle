@@ -3,6 +3,8 @@ plugins {
     id 'idea'
     id 'maven-publish'
     id 'net.minecraftforge.gradle' version '[6.0.24,6.2)'
+    id 'checkstyle'
+    id 'com.github.spotbugs' version '6.0.26'
 }
 
 version = mod_version
@@ -91,7 +93,7 @@ repositories {
 def ros2JavaPath = System.getenv("ROS2JAVA_INSTALL_PATH")
 
 if (ros2JavaPath == null) {
-    throw new GradleException("環境変数 ROS2JAVA_INSTALL_PATH が設定されていません。")
+    throw new IllegalStateException("環境変数 ROS2JAVA_INSTALL_PATH が設定されていません。")
 }
 
 // パッケージ名一覧（必要なものをここに列挙）
@@ -198,4 +200,25 @@ sourceSets.each {
     def dir = layout.buildDirectory.dir("sourcesSets/$it.name")
     it.output.resourcesDir = dir
     it.java.destinationDirectory = dir
+}
+
+// Checkstyle configuration
+checkstyle {
+    toolVersion = '10.12.4'
+    configFile = file("${project.rootDir}/config/checkstyle/checkstyle.xml")
+    ignoreFailures = false
+}
+
+// SpotBugs configuration
+spotbugs {
+    ignoreFailures = false
+    effort = 'max'
+    reportLevel = 'medium'
+}
+
+tasks.withType(com.github.spotbugs.snom.SpotBugsTask) {
+    reports {
+        html.required = true
+        xml.required = false
+    }
 }

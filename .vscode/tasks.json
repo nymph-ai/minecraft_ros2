@@ -1,0 +1,80 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "gradle: compile",
+            "type": "shell",
+            "command": "./gradlew",
+            "args": ["compileJava"],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "problemMatcher": ["$gradle"],
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared"
+            }
+        },
+        {
+            "label": "gradle: check",
+            "type": "shell",
+            "command": "./gradlew",
+            "args": ["check"],
+            "group": "test",
+            "problemMatcher": ["$gradle"],
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared"
+            }
+        },
+        {
+            "label": "gradle: checkstyle",
+            "type": "shell",
+            "command": "./gradlew",
+            "args": ["checkstyleMain"],
+            "group": "test",
+            "problemMatcher": [],
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared"
+            }
+        },
+        {
+            "label": "gradle: spotbugs",
+            "type": "shell",
+            "command": "./gradlew",
+            "args": ["spotbugsMain"],
+            "group": "test",
+            "problemMatcher": [],
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared"
+            }
+        },
+        {
+            "label": "gradle: quick-check",
+            "type": "shell",
+            "command": "./gradlew",
+            "args": ["compileJava", "checkstyleMain"],
+            "group": "test",
+            "problemMatcher": ["$gradle"],
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared"
+            }
+        },
+        {
+            "label": "gradle: full-build",
+            "type": "shell",
+            "command": "./gradlew",
+            "args": ["build"],
+            "group": "build",
+            "problemMatcher": ["$gradle"],
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared"
+            }
+        }
+    ]
+}

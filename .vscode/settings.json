@@ -1,3 +1,23 @@
 {
-    "java.compile.nullAnalysis.mode": "automatic"
+    "java.compile.nullAnalysis.mode": "automatic",
+    "java.configuration.updateBuildConfiguration": "automatic",
+    "java.autobuild.enabled": true,
+    "java.errors.incompleteClasspath.severity": "warning",
+    "java.completion.enabled": true,
+    "java.completion.guessMethodArguments": true,
+    "java.signatureHelp.enabled": true,
+    "java.implementationsCodeLens.enabled": true,
+    "java.referencesCodeLens.enabled": true,
+    "java.format.enabled": true,
+    "java.format.settings.url": "${workspaceFolder}/.vscode/java-formatter.xml",
+    "java.saveActions.organizeImports": true,
+    "editor.formatOnSave": true,
+    "editor.codeActionsOnSave": {
+        "source.organizeImports": "explicit"
+    },
+    "files.exclude": {
+        "**/.gradle": true,
+        "**/build": true,
+        "**/.cache": true
+    }
 }
