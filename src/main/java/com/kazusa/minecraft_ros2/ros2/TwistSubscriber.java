@@ -10,6 +10,7 @@ import geometry_msgs.msg.Twist;
 
 public class TwistSubscriber extends BaseComposableNode {
     private static final Logger LOGGER = LoggerFactory.getLogger(TwistSubscriber.class);
+    private static final double MOVEMENT_THRESHOLD = 0.05;
 
     private Minecraft minecraft;
     private Player player;
@@ -20,11 +21,17 @@ public class TwistSubscriber extends BaseComposableNode {
     private double lastAngularY = 0.0;
     private double lastAngularZ = 0.0;
 
+    private final boolean loggingEnabled;
+
     public TwistSubscriber() {
         super("minecraft_twist_subscriber");
+        this.loggingEnabled = Config.COMMON.enableLogging.get();
         this.node.<Twist>createSubscription(
             Twist.class, "/cmd_vel", this::twistCallback);
-        LOGGER.info("TwistSubscriber initialized and listening on 'cmd_vel' topic");
+        LOGGER.info(
+            "TwistSubscriber initialized and listening on 'cmd_vel' topic (loggingEnabled={})",
+            this.loggingEnabled
+        );
     }
 
     private void twistCallback(final Twist msg) {
@@ -35,8 +42,17 @@ public class TwistSubscriber extends BaseComposableNode {
         lastAngularY = msg.getAngular().getY();
         lastAngularZ = msg.getAngular().getZ();
         
-        LOGGER.debug("Received twist: linear_x={}, linear_y={}, linear_z={}, angular_y={}, angular_z={}", 
-                lastLinearX, lastLinearY, lastLinearZ, lastAngularY, lastAngularZ);
+        if (loggingEnabled) {
+            LOGGER.info(
+                "Received twist: linear_x={}, linear_y={}, linear_z={}, angular_y={}, angular_z={}",
+                lastLinearX, lastLinearY, lastLinearZ, lastAngularY, lastAngularZ
+            );
+        } else {
+            LOGGER.debug(
+                "Received twist: linear_x={}, linear_y={}, linear_z={}, angular_y={}, angular_z={}",
+                lastLinearX, lastLinearY, lastLinearZ, lastAngularY, lastAngularZ
+            );
+        }
     }
     
     /**
@@ -51,7 +67,9 @@ public class TwistSubscriber extends BaseComposableNode {
             double maxSpeed = Config.COMMON.maxSpeed.get();
             double speedFactor = maxSpeed / 20.0;
 
-            if (Math.abs(lastLinearX) > 0.1 || Math.abs(lastLinearY) > 0.1 || Math.abs(lastLinearZ) > 0.1) {
+            if (Math.abs(lastLinearX) > MOVEMENT_THRESHOLD
+                    || Math.abs(lastLinearY) > MOVEMENT_THRESHOLD
+                    || Math.abs(lastLinearZ) > MOVEMENT_THRESHOLD) {
                 float yaw = player.getYRot();
                 double yawRad = Math.toRadians(yaw);
 
@@ -72,14 +90,28 @@ public class TwistSubscriber extends BaseComposableNode {
                 // Use deltaMovement for natural movement
                 player.setDeltaMovement(dx, dy, dz);
                 player.hasImpulse = true; // Set to true when using deltaMovement
+
+                if (loggingEnabled) {
+                    LOGGER.info(
+                        "Applied movement: dx={}, dy={}, dz={}, yaw={}, linear=({}, {}, {})",
+                        dx, dy, dz, yaw, lastLinearX, lastLinearY, lastLinearZ
+                    );
+                }
             }
 
             // Rotation processing (smooth)
-            if (Math.abs(lastAngularZ) > 0.1 || Math.abs(lastAngularY) > 0.1) {
+            if (Math.abs(lastAngularZ) > MOVEMENT_THRESHOLD || Math.abs(lastAngularY) > MOVEMENT_THRESHOLD) {
                 float rotZ = (float)(-lastAngularZ * speedFactor * 10);
                 float rotY = (float)(-lastAngularY * speedFactor * 10);
                 player.setYRot(player.getYRot() + rotZ);
                 player.setXRot(player.getXRot() + rotY);
+
+                if (loggingEnabled) {
+                    LOGGER.info(
+                        "Applied rotation: rotZ={}, rotY={}, angular=({}, {})",
+                        rotZ, rotY, lastAngularZ, lastAngularY
+                    );
+                }
             }
         }
     }
