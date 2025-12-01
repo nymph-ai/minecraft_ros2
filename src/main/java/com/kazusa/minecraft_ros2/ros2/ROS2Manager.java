@@ -8,9 +8,12 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.client.Minecraft;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.fml.loading.FMLEnvironment;
 import org.ros2.rcljava.RCLJava;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import simulation_interfaces.msg.Result;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -39,8 +42,11 @@ public final class ROS2Manager {
     private SpawnEntityService spawnEntityService;
     private DigBlockService digBlockService;
     
+    private final boolean isClientEnvironment;
+
     private ROS2Manager() {
         // Private constructor for singleton
+        this.isClientEnvironment = FMLEnvironment.dist == Dist.CLIENT;
     }
 
     public ImagePublisher getImagePublisher() {
@@ -66,6 +72,10 @@ public final class ROS2Manager {
      * Initialize ROS2 system
      */
     public void initialize() {
+        if (!isClientEnvironment) {
+            LOGGER.info("Skipping ROS2 initialization on dedicated server.");
+            return;
+        }
         if (!initialized.getAndSet(true)) {
             try {
                 LOGGER.info("Initializing ROS2...");
@@ -73,8 +83,10 @@ public final class ROS2Manager {
                 RCLJava.rclJavaInit();
                 
                 // Create subscriber
-                twistSubscriber = new TwistSubscriber();
                 commandSubscriber = new CommandSubscriber();
+                spawnEntityService = new SpawnEntityService();
+                digBlockService = new DigBlockService();
+                twistSubscriber = new TwistSubscriber();
                 imagePublisher = new ImagePublisher();
                 pointCloudPublisher = new PointCloudPublisher();
                 imuPublisher = new IMUPublisher();
@@ -90,9 +102,6 @@ public final class ROS2Manager {
                 }
 
 
-                spawnEntityService = new SpawnEntityService();
-                digBlockService = new DigBlockService();
-                
                 // Create and start executor thread for ROS2 spin
                 executorService = Executors.newSingleThreadExecutor(r -> {
                     Thread t = new Thread(r, "ROS2-Executor");
@@ -104,16 +113,41 @@ public final class ROS2Manager {
                     LOGGER.info("ROS2 spin thread started");
                     try {
                         while (!Thread.currentThread().isInterrupted() && RCLJava.ok()) {
-                            RCLJava.spinSome(twistSubscriber);
-                            RCLJava.spinSome(commandSubscriber);
-                            RCLJava.spinSome(imagePublisher);
-                            RCLJava.spinSome(pointCloudPublisher);
-                            RCLJava.spinSome(imuPublisher);
-                            RCLJava.spinSome(groundTruthPublisher);
-                            RCLJava.spinSome(surroundingBlockArrayPublisher);
+                            if (twistSubscriber != null) {
+                                RCLJava.spinSome(twistSubscriber);
+                            }
+                            if (commandSubscriber != null) {
+                                RCLJava.spinSome(commandSubscriber);
+                            }
+                            if (imagePublisher != null) {
+                                RCLJava.spinSome(imagePublisher);
+                            }
+                            if (pointCloudPublisher != null) {
+                                RCLJava.spinSome(pointCloudPublisher);
+                            }
+                            if (imuPublisher != null) {
+                                RCLJava.spinSome(imuPublisher);
+                            }
+                            if (groundTruthPublisher != null) {
+                                RCLJava.spinSome(groundTruthPublisher);
+                            }
+                            if (surroundingBlockArrayPublisher != null) {
+                                RCLJava.spinSome(surroundingBlockArrayPublisher);
+                            }
 
-                            RCLJava.spinSome(spawnEntityService);
-                            RCLJava.spinSome(digBlockService);
+                            if (spawnEntityService != null) {
+                                RCLJava.spinSome(spawnEntityService);
+                                if (spawnEntityService.spawnedEntities != null) {
+                                    for (DynamicModelEntity entity : spawnEntityService.spawnedEntities) {
+                                        if (entity.getRobotTwistSubscriber() != null) {
+                                            RCLJava.spinSome(entity.getRobotTwistSubscriber());
+                                        }
+                                    }
+                                }
+                            }
+                            if (digBlockService != null) {
+                                RCLJava.spinSome(digBlockService);
+                            }
 
                             Level world = Minecraft.getInstance().level;
                             if (world != null) {
@@ -134,15 +168,6 @@ public final class ROS2Manager {
                                 }
                             }
 
-                            if (spawnEntityService.spawnedEntities != null) {
-                                for (DynamicModelEntity entity : spawnEntityService.spawnedEntities) {
-                                    if (entity.getRobotTwistSubscriber() != null) {
-                                        RCLJava.spinSome(entity.getRobotTwistSubscriber());
-                                    }
-                                }
-                            }
-                            //captureAndPublishImage
-                            
                             if (livingEntitiesPublisher != null) {
                                 RCLJava.spinSome(livingEntitiesPublisher);
                             }
@@ -198,12 +223,21 @@ public final class ROS2Manager {
      * Apply player movement based on the latest twist message
      * Called every game tick
      */
-    public void processTwistMessages() {
+    public void processClientTick() {
         if (!initialized.get()) {
             return; // ROS2 not initialized, skip processing
         }
         if (twistSubscriber != null) {
             twistSubscriber.applyPlayerMovement();
+        }
+    }
+
+    /**
+     * Process movement updates for server-managed entities
+     */
+    public void processServerTick() {
+        if (!initialized.get() || spawnEntityService == null) {
+            return;
         }
         if (spawnEntityService.spawnedEntities != null) {
             for (DynamicModelEntity entity : spawnEntityService.spawnedEntities) {
@@ -219,6 +253,15 @@ public final class ROS2Manager {
      */
     public boolean isInitialized() {
         return initialized.get();
+    }
+
+    /**
+     * Exposed entry point for Forge commands to spawn entities.
+     */
+    public boolean spawnEntityFromCommand(String name, String namespace, String uri,
+                                          double x, double y, double z) {
+        LOGGER.warn("Spawn entity via command is not supported in client-only ROS configuration.");
+        return false;
     }
 
 }

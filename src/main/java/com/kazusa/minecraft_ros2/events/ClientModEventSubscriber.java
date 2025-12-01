@@ -37,14 +37,6 @@ public class ClientModEventSubscriber {
     }
 
     @SubscribeEvent
-    public static void onEntityAttributeCreation(EntityAttributeCreationEvent event) {
-        event.put(
-            ModEntities.CUSTOM_ENTITY.get(),        // RegistryObject<EntityType<DynamicModelEntity>>
-            DynamicModelEntity.createAttributes().build()
-        );
-    }
-
-    @SubscribeEvent
     public static void onAddPackFinders(AddPackFindersEvent event) {
         if (event.getPackType() == PackType.CLIENT_RESOURCES) {
             Path packDir = Paths.get("run/resourcepacks/runtime_geo");

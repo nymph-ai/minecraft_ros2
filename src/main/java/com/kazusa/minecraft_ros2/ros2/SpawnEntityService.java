@@ -20,6 +20,8 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.entity.EntityType;
 import net.minecraftforge.registries.RegistryObject;
 import net.minecraft.network.chat.Component;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.fml.loading.FMLEnvironment;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -46,158 +48,192 @@ public class SpawnEntityService  extends BaseComposableNode {
 
         try {
             this.node.<SpawnEntity>createService(
-                SpawnEntity.class,            // サービス定義クラス
-                "spawn_entity",               // トピック名
+                SpawnEntity.class,
+                "spawn_entity",
                 (RMWRequestId header, SpawnEntity_Request request,
                     SpawnEntity_Response response)
                     -> this.handleService(header, request, response));
         } catch (NoSuchFieldException | IllegalAccessException e) {
             throw new RuntimeException("Failed to create service", e);
         }
-        LOGGER.info("SpawnEntityService initialized and listening on '/add_two_ints'");
+        LOGGER.info("SpawnEntityService initialized and listening on '/spawn_entity'");
     }
 
     private void handleService(final RMWRequestId header,
             final SpawnEntity_Request request,
             final SpawnEntity_Response response) {
-        String modelName = request.getName();
-        String modelUri = request.getEntityResource().getUri();
-        //String modelResourceString = request.getResourceString();
-        if (modelName == null || modelName.isEmpty() || modelUri == null || modelUri.isEmpty()) {
-            LOGGER.error("Invalid request: " + request);
-            Result errorResult = new Result();
-            errorResult.setResult(Byte.valueOf((byte) 0)); // Failure code
-            errorResult.setErrorMessage("Invalid request: modelName or modelUri is empty");
-            response.setResult(errorResult);
-            return;
+        Result result;
+        try {
+            result = spawnEntityInternal(
+                request.getName(),
+                request.getEntityNamespace(),
+                request.getEntityResource().getUri(),
+                request.getInitialPose().getPose().getPosition().getX(),
+                request.getInitialPose().getPose().getPosition().getY(),
+                request.getInitialPose().getPose().getPosition().getZ(),
+                request.getAllowRenaming()
+            );
+        } catch (Exception e) {
+            LOGGER.error("Unexpected exception while handling spawn request {}", request, e);
+            result = new Result();
+            result.setResult(Byte.valueOf((byte) 0));
+            result.setErrorMessage("Internal error: " + e.getMessage());
+        }
+        response.setResult(result);
+        response.setEntityName(request.getName());
+    }
+
+    public Result spawnViaCommand(String name, String namespace, String uri,
+            double x, double y, double z) {
+        return spawnEntityInternal(name, namespace, uri, x, y, z, true);
+    }
+
+    private Result spawnEntityInternal(String modelName, String namespace, String rawUri,
+            double x, double y, double z, boolean allowRenaming) {
+        Result result = new Result();
+
+        if (modelName == null || modelName.isEmpty() || rawUri == null || rawUri.isEmpty()) {
+            LOGGER.error("Invalid spawn request: missing name or uri");
+            result.setResult(Byte.valueOf((byte) 0));
+            result.setErrorMessage("Invalid request: modelName or modelUri is empty");
+            return result;
         }
 
-        boolean isUnique = true;
-        for (DynamicModelEntity entity : spawnedEntities) {
-            if (entity.getCustomName() != null && entity.getCustomName().getString().equals(modelName)) {
-                isUnique = false;
-                break;
-            }
-        }
-        if (!isUnique) {
-            LOGGER.error("Entity with name '" + modelName + "' already exists.");
-            Result errorResult = new Result();
-            errorResult.setResult(Byte.valueOf((byte) 0)); // Failure code
-            errorResult.setErrorMessage("Entity with name '" + modelName + "' already exists.");
-            response.setResult(errorResult);
-            return;
-        }
-
+        String modelUri = rawUri;
         if (modelUri.startsWith("file://")) {
-            modelUri = modelUri.replace("file://", ""); // file:// プレフィックスを削除
+            modelUri = modelUri.replace("file://", "");
         }
+
+        LOGGER.info("SpawnEntityService request name={} uri={} namespace={} position=({}, {}, {})",
+                modelName, modelUri, namespace, x, y, z);
 
         if (modelUri.startsWith("http://") || modelUri.startsWith("https://")) {
-            LOGGER.error("Remote URIs are not supported: " + modelUri);
-            Result errorResult = new Result();
-            errorResult.setResult(Byte.valueOf((byte) 0)); // Failure code
-            errorResult.setErrorMessage("Remote URIs are not supported: " + modelUri);
-            response.setResult(errorResult);
-            return;
+            LOGGER.error("Remote URIs are not supported: {}", modelUri);
+            result.setResult(Byte.valueOf((byte) 0));
+            result.setErrorMessage("Remote URIs are not supported: " + modelUri);
+            return result;
         }
 
         if (!modelUri.toLowerCase().endsWith(".geo.json")) {
-            LOGGER.error("Invalid model URI, must end with .geo.json: " + modelUri);
-            Result errorResult = new Result();
-            errorResult.setResult(Byte.valueOf((byte) 0)); // Failure code
-            errorResult.setErrorMessage("Invalid model URI, must end with .geo.json: " + modelUri);
-            response.setResult(errorResult);
-            return;
+            LOGGER.error("Invalid model URI, must end with .geo.json: {}", modelUri);
+            result.setResult(Byte.valueOf((byte) 0));
+            result.setErrorMessage("Invalid model URI, must end with .geo.json: " + modelUri);
+            return result;
         }
 
-        // jsonファイルの中身が有効かチェック
         Path jsonPath = Paths.get(modelUri);
         if (!Files.exists(jsonPath)) {
-            LOGGER.error("Model URI does not exist: " + modelUri);
-            Result errorResult = new Result();
-            errorResult.setResult(Byte.valueOf((byte) 0)); // Failure code
-            errorResult.setErrorMessage("Model URI does not exist: " + modelUri);
-            response.setResult(errorResult);
-            return;
+            LOGGER.error("Model URI does not exist: {}", modelUri);
+            result.setResult(Byte.valueOf((byte) 0));
+            result.setErrorMessage("Model URI does not exist: " + modelUri);
+            return result;
         }
         try {
             String content = Files.readString(jsonPath);
             if (!content.contains("\"format_version\"") || !content.contains("\"minecraft:geometry\"")) {
-                LOGGER.error("Invalid geometry JSON format: " + modelUri);
-                Result errorResult = new Result();
-                errorResult.setResult(Byte.valueOf((byte) 0)); // Failure code
-                errorResult.setErrorMessage("Invalid geometry JSON format: " + modelUri);
-                response.setResult(errorResult);
-                return;
+                LOGGER.error("Invalid geometry JSON format: {}", modelUri);
+                result.setResult(Byte.valueOf((byte) 0));
+                result.setErrorMessage("Invalid geometry JSON format: " + modelUri);
+                return result;
             }
         } catch (IOException e) {
-            LOGGER.error("Failed to read model URI: " + modelUri, e);
-            Result errorResult = new Result();
-            errorResult.setResult(Byte.valueOf((byte) 0)); // Failure code
-            errorResult.setErrorMessage("Failed to read model URI: " + modelUri);
-            response.setResult(errorResult);
-            return;
+            LOGGER.error("Failed to read model URI: {}", modelUri, e);
+            result.setResult(Byte.valueOf((byte) 0));
+            result.setErrorMessage("Failed to read model URI: " + modelUri);
+            return result;
+        }
+        LOGGER.info("SpawnEntityService validated geometry {}", modelUri);
+
+        if (!allowRenaming) {
+            for (DynamicModelEntity entity : spawnedEntities) {
+                if (entity.getCustomName() != null && entity.getCustomName().getString().equals(modelName)) {
+                    LOGGER.error("Entity with name '{}' already exists.", modelName);
+                    result.setResult(Byte.valueOf((byte) 0));
+                    result.setErrorMessage("Entity with name '" + modelName + "' already exists.");
+                    return result;
+                }
+            }
         }
 
-        // jsonファイル名がリストに含まれていない場合は追加
         String jsonFileName = modelUri.substring(modelUri.lastIndexOf('/') + 1, modelUri.lastIndexOf('.'));
-        if (!jsonFileNames.contains(jsonFileName)) {
+        int jsonIndex = jsonFileNames.indexOf(jsonFileName);
+        LOGGER.info("SpawnEntityService using geometry {} (known={})", jsonFileName, jsonIndex >= 0);
+        if (jsonIndex < 0) {
             if (current_model_number >= DynamicModelEntityModel.MAX_MODEL_COUNT) {
                 LOGGER.error("Maximum model number reached, overwriting existing models.");
-                Result errorResult = new Result();
-                errorResult.setResult(Byte.valueOf((byte) 0)); // Failure code
-                errorResult.setErrorMessage("Maximum model number reached, overwriting existing models.");
-                response.setResult(errorResult);
-                return;
+                result.setResult(Byte.valueOf((byte) 0));
+                result.setErrorMessage("Maximum model number reached.");
+                return result;
             }
+            jsonIndex = current_model_number;
             jsonFileNames.add(jsonFileName);
-            GeometryApplier.applyJson(
-                Paths.get(modelUri), "runtime_geo", current_model_number
-            );
+            LOGGER.info("SpawnEntityService assigned geometry {} to slot {}", jsonFileName, jsonIndex);
+            if (FMLEnvironment.dist == Dist.CLIENT) {
+                LOGGER.info("SpawnEntityService applying geometry {} into slot {}", jsonFileName, jsonIndex);
+                try {
+                    GeometryApplier.applyJson(Paths.get(modelUri), "runtime_geo", jsonIndex);
+                    LOGGER.info("SpawnEntityService applied geometry {} into slot {}", jsonFileName, jsonIndex);
+                } catch (Exception e) {
+                    LOGGER.error("Failed to apply geometry {} at {}", jsonFileName, modelUri, e);
+                    result.setResult(Byte.valueOf((byte) 0));
+                    result.setErrorMessage("Failed to apply geometry: " + e.getMessage());
+                    return result;
+                }
+            } else {
+                LOGGER.warn("Skipping geometry application for {} on dedicated server. Ensure clients have this resource pack.", jsonFileName);
+            }
             current_model_number++;
         }
 
-        double x = request.getInitialPose().getPose().getPosition().getX();
-        double y = request.getInitialPose().getPose().getPosition().getY();
-        double z = request.getInitialPose().getPose().getPosition().getZ();
-
+        LOGGER.info("SpawnEntityService acquiring server instance");
         MinecraftServer server = ServerLifecycleHooks.getCurrentServer();
+        if (server == null) {
+            LOGGER.error("MinecraftServer reference is null");
+            result.setResult(Byte.valueOf((byte) 0));
+            result.setErrorMessage("Server is not available");
+            return result;
+        }
+        LOGGER.info("SpawnEntityService obtained server instance");
         ServerLevel world = server.getLevel(Level.OVERWORLD);
+        if (world == null) {
+            LOGGER.error("Overworld is not available");
+            result.setResult(Byte.valueOf((byte) 0));
+            result.setErrorMessage("World is not available");
+            return result;
+        }
+        LOGGER.info("SpawnEntityService obtained overworld reference");
 
-        // 3) Entity を生成して座標をセット
         RegistryObject<EntityType<DynamicModelEntity>> ro = ModEntities.CUSTOM_ENTITY;
         EntityType<DynamicModelEntity> type = ro.get();
+        String customName = namespace != null && !namespace.isEmpty() ? namespace : modelName;
         DynamicModelEntity robot = type.create(world);
         if (robot == null) {
-            LOGGER.error("Failed to create entity of type: " + type);
-            Result errorResult = new Result();
-            errorResult.setResult(Byte.valueOf((byte) 0)); // Failure code
-            errorResult.setErrorMessage("Failed to create entity of type: " + type);
-            response.setResult(errorResult);
-            return;
+            LOGGER.error("Failed to create entity of type: {}", type);
+            result.setResult(Byte.valueOf((byte) 0));
+            result.setErrorMessage("Failed to create entity of type: " + type);
+            return result;
         }
-        robot.setCustomName(Component.literal(modelName)); // Entityの名前を設定
+        LOGGER.info("SpawnEntityService created entity instance for {}", customName);
+        robot.setCustomName(Component.literal(customName));
         robot.initRobotTwistSubscriber();
 
         spawnedEntities.add(robot);
+        LOGGER.info("SpawnEntityService tracked entity {}, total robots={}", customName, spawnedEntities.size());
 
-        // jsonファイル名から番号を取得
-        int jsonIndex = jsonFileNames.indexOf(jsonFileName);
         robot.setModelId(jsonIndex);
+        LOGGER.info("SpawnEntityService assigned model id {} for {}", jsonIndex, customName);
 
-        // 4) 位置と回転を設定
-        robot.moveTo(x, y, z, /* yaw= */ 0.0F, /* pitch= */ 0.0F);
-
-        // 5) ワールドにスポーン
+        robot.moveTo(x, y, z, 0.0F, 0.0F);
+        LOGGER.info("SpawnEntityService moving entity {} to ({}, {}, {})", customName, x, y, z);
         world.addFreshEntity(robot);
-
+        LOGGER.info("SpawnEntityService added entity {} to world", customName);
         robot.setModelDimensions();
+        LOGGER.info("SpawnEntityService set model dimensions for {}", customName);
 
-        Result result = new Result();
-        byte code = (byte) (robot != null ? 1 : 0);
-        result.setResult(Byte.valueOf(code)); // 成功
-        response.setResult(result);
-        System.out.println("request: " + x + ", " + y + ", " + z);
+        result.setResult(Byte.valueOf((byte) 1));
+        result.setErrorMessage("");
+        LOGGER.info("SpawnEntityService completed name={} uri={} code=1", customName, modelUri);
+        return result;
     }
 
 }
