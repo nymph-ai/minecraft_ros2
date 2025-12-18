@@ -2,11 +2,11 @@ FROM ghcr.io/minecraft-ros2/ros2_java:latest AS modbuilder
 ENV ROS2JAVA_INSTALL_PATH=/ws/ros2_java_ws/install
 WORKDIR /src
 
-COPY gradlew gradle.properties settings.gradle build.gradle ./
-COPY gradle ./gradle
+COPY minecraft_ros2/gradlew minecraft_ros2/gradle.properties minecraft_ros2/settings.gradle minecraft_ros2/build.gradle ./
+COPY minecraft_ros2/gradle ./gradle
 RUN chmod +x gradlew
 RUN ./gradlew --no-daemon dependencies || true
-COPY . .
+COPY minecraft_ros2/ .
 RUN ./gradlew --no-daemon clean jar
 
 FROM ghcr.io/minecraft-ros2/ros2_java:latest
@@ -37,16 +37,28 @@ RUN <<EOF
         libglapi-mesa \
         libosmesa6 \
         mesa-utils \
-        mesa-vulkan-drivers
+        mesa-vulkan-drivers \
+        python3-pip
     apt-get clean
     rm -rf /var/lib/apt/lists
 EOF
 
-COPY . .
+COPY minecraft_ros2/ .
 COPY --from=modbuilder /src/build/libs/ ${MOD_JAR_CACHE}/
 
+# Copy image capture service files (build context is now parent directory)
+RUN mkdir -p /opt/image_capture
+COPY bot_controller/image_capture.py /opt/image_capture/image_capture.py
+COPY bot_controller/image_bridge.py /opt/image_capture/image_bridge.py
+COPY bot_controller/requirements.txt /opt/image_capture/requirements.txt
+
+# Install Python dependencies for image capture
+RUN pip3 install --no-cache-dir -r /opt/image_capture/requirements.txt
+
 RUN install -m 644 headless_xorg.conf /etc/X11/xorg-headless.conf && \
-    chmod +x headless_client_entry.sh
+    chmod +x headless_client_entry.sh && \
+    chmod +x /opt/image_capture/image_capture.py && \
+    chmod +x /opt/image_capture/image_bridge.py
 
 COPY --chmod=755 <<EOF runRviz.sh
     source /opt/ros/humble/setup.bash

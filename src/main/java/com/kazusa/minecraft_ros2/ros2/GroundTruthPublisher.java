@@ -21,10 +21,11 @@ public class GroundTruthPublisher extends BaseComposableNode {
 
     public GroundTruthPublisher() {
         super("minecraft_ground_truth_publisher");
+
         publisher = this.node.createPublisher(Pose.class, "/player/ground_truth");
         minecraft = Minecraft.getInstance();
         this.node.createWallTimer(delta_time, TimeUnit.MILLISECONDS, this::publishGroundTruth);
-        LOGGER.info("GroundTruthPublisher initialized and publishing to '/player/ground_truth'");
+        LOGGER.info("GroundTruthPublisher initialized with BEST_EFFORT QoS (depth=1)");
     }
 
     public void publishGroundTruth() {
@@ -32,7 +33,6 @@ public class GroundTruthPublisher extends BaseComposableNode {
             player = minecraft.player;
 
             if (player == null) {
-                LOGGER.warn("Player is null, cannot get ground truth");
                 return;
             }
 

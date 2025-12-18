@@ -30,8 +30,8 @@ public class LivingEntitiesPublisher extends BaseComposableNode {
     private final Minecraft minecraft;
 
     private final int maxMobCount = 100;
-    private final double searchHorizontalRadius = 64.0;
-    private final double searchVerticalRadius = 16.0;
+    private final double searchHorizontalRadius = 72.0;  // Increased from 64 to reduce boundary flickering
+    private final double searchVerticalRadius = 20.0;    // Increased from 16 to reduce boundary flickering
     private final int publishRateHz = 10;
 
     public LivingEntitiesPublisher() {
@@ -56,10 +56,7 @@ public class LivingEntitiesPublisher extends BaseComposableNode {
         List<net.minecraft.world.entity.LivingEntity> nearbyLivingEntities =
             findNearbyLivingEntities(level, player, px, py, pz);
 
-        if (nearbyLivingEntities.isEmpty()) {
-            return;
-        }
-        
+        // Always publish, even if empty - this allows visualization tools to clear old entities
         minecraft_msgs.msg.LivingEntityArray entityArray = new LivingEntityArray();
         Header header = new Header();
         header.setStamp(Time.now());

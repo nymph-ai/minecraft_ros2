@@ -44,13 +44,11 @@ public class SurroundingBlockArrayPublisher extends BaseComposableNode {
         CompletableFuture.runAsync(() -> {
             player = minecraft.player;
             if (player == null) {
-                LOGGER.warn("Player is null, cannot get surrounding block array");
                 return;
             }
 
             Level world = minecraft.level;
             if (world == null) {
-                LOGGER.warn("current world is null, cannot publish surrounding block array");
                 return;
             }
 

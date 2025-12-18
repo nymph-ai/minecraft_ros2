@@ -29,7 +29,7 @@ public class PlayerStatusPublisher extends BaseComposableNode {
         minecraft = Minecraft.getInstance();
         publisher = node.createPublisher(PlayerStatus.class, "/player/status");
         message = new PlayerStatus();
-        
+
         long periodMs = 1000 / publishRateHz;
         node.createWallTimer(periodMs, TimeUnit.MILLISECONDS, this::publishPlayerStatus);
         LOGGER.info("Player status publisher initialized with topic: /player/status at 10Hz");
