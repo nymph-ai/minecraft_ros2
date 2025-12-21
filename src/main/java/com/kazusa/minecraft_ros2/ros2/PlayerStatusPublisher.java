@@ -43,7 +43,7 @@ public class PlayerStatusPublisher extends BaseComposableNode {
             }
 
             message.setName(player.getName().getString());
-            message.setDimension(player.level().dimension().location().toString());
+            message.setDimension(player.level().dimension().identifier().toString());
             message.setFoodLevel((byte)player.getFoodData().getFoodLevel());
             message.setScore(player.getScore());
             message.setSleepTimer((byte)player.getSleepTimer());

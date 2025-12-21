@@ -8,21 +8,18 @@ import net.minecraft.world.entity.EntityDimensions;
 import net.minecraft.world.level.Level;
 import net.minecraft.network.syncher.SynchedEntityData.Builder;
 import net.minecraft.network.syncher.SynchedEntityData;
-import net.minecraft.network.syncher.*;
-import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 
 import software.bernie.geckolib.animatable.GeoEntity;
 import software.bernie.geckolib.animatable.instance.AnimatableInstanceCache;
 import software.bernie.geckolib.util.GeckoLibUtil;
-import software.bernie.geckolib.animation.AnimatableManager;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import net.minecraft.client.Minecraft;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.packs.resources.Resource;
 import net.minecraft.util.GsonHelper;
 import net.minecraft.world.phys.Vec3;
@@ -33,9 +30,6 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 
 public class DynamicModelEntity extends Mob implements GeoEntity {
-
-    private static final EntityDataAccessor<CompoundTag> DATA_SHAPE =
-        SynchedEntityData.defineId(DynamicModelEntity.class, EntityDataSerializers.COMPOUND_TAG);
 
     private RobotTwistSubscriber twistSubscriber;
 
@@ -70,7 +64,7 @@ public class DynamicModelEntity extends Mob implements GeoEntity {
     /**
      * GeoJSON を読み込んで、EntityDimensions（幅・高さ）を計算するユーティリティメソッド
      */
-    private void computeDimensionsFromGeoJson(ResourceLocation geoJsonLoc) {
+    private void computeDimensionsFromGeoJson(Identifier geoJsonLoc) {
         try {
             // 1) リソースマネージャーから .geo.json の InputStream を取得
             Optional<Resource> resource = Minecraft.getInstance()
@@ -204,23 +198,14 @@ public class DynamicModelEntity extends Mob implements GeoEntity {
     }
 
     public void setModelDimensions() {
-        var geoLoc = new ResourceLocation(
+        var geoLoc = Identifier.fromNamespaceAndPath(
             "runtime_geo", "geo/dynamic_model_" + this.getModelId() + ".geo.json");
         computeDimensionsFromGeoJson(geoLoc);
         adjustDimensionsAndRefresh(computedWidthInM, computedHeightInM, computedDepthInM);
     }
 
-    // ── Entity 必須オーバーライド ──
-    @Override
-    protected void defineSynchedData(Builder builder) {
-        super.defineSynchedData(builder);
-        builder.define(DATA_SHAPE, new CompoundTag());
-    }
-
-    @Override
     public boolean canBeCollidedWith() { return true; }
 
-    @Override
     public boolean isPushable()       { return true; }
 
     public static AttributeSupplier.Builder createAttributes() {
@@ -240,10 +225,10 @@ public class DynamicModelEntity extends Mob implements GeoEntity {
         return this.cache;
     }
 
-    @Override
-    public void registerControllers(AnimatableManager.ControllerRegistrar controllers) {
-        // コントローラーの登録は必要に応じて行う
-        // 例: controllers.add(new AnimationController<>(this, "controllerName", 0, this::predicate));
+    public void registerControllers(
+        software.bernie.geckolib.animatable.manager.AnimatableManager.ControllerRegistrar controllers
+    ) {
+        // No animation controllers required for this entity
     }
 
 }

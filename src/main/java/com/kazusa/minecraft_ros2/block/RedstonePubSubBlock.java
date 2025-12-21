@@ -11,23 +11,17 @@ import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
-import net.minecraft.world.ItemInteractionResult;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.EntityBlock;
 import net.minecraft.world.level.block.entity.BlockEntity;
-import net.minecraft.world.level.block.state.BlockBehaviour;
-import net.minecraft.world.level.block.SoundType;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.material.MapColor;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.network.FriendlyByteBuf;
 
-import java.util.function.Consumer;
 import java.util.Collections;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -46,20 +40,12 @@ public class RedstonePubSubBlock extends Block implements EntityBlock {
         return new RedStonePubSubBlockEntity(pos, state);
     }
 
-    public RedstonePubSubBlock() {
-        super(BlockBehaviour.Properties.of()
-            .mapColor(MapColor.WOOD)
-            .strength(2.0f, 6.0f)
-            .sound(SoundType.WOOD)
-        );
+    public RedstonePubSubBlock(Properties props) {
+        super(props);
         publisher = null;
         subscriber = null;
         // デフォルト状態を OFF に設定
         this.registerDefaultState(this.stateDefinition.any().setValue(POWERED, false));
-    }
-
-    public RedstonePubSubBlock(Properties props) {
-        super(props);
     }
 
     @Override
@@ -67,14 +53,6 @@ public class RedstonePubSubBlock extends Block implements EntityBlock {
         super.onPlace(state, world, pos, oldState, isMoving);
         if (!world.isClientSide()) {
             INSTANCES.add(pos.immutable());
-        }
-    }
-
-    @Override
-    public void onRemove(BlockState state, Level world, BlockPos pos, BlockState newState, boolean isMoving) {
-        super.onRemove(state, world, pos, newState, isMoving);
-        if (!world.isClientSide()) {
-            INSTANCES.remove(pos);
         }
     }
 
@@ -93,48 +71,27 @@ public class RedstonePubSubBlock extends Block implements EntityBlock {
         builder.add(POWERED);
     }
 
-    @Override
-    public ItemInteractionResult useItemOn(
-        ItemStack held,
+    public InteractionResult use(
         BlockState state,
         Level world,
         BlockPos pos,
         Player player,
         InteractionHand hand,
         BlockHitResult hit
-        ) {
+    ) {
+        ItemStack held = player.getItemInHand(hand);
         if (held.getItem() == Items.STICK) {
-            // サーバー側だけ GUI を開く
-            if (!world.isClientSide) {
+            if (!world.isClientSide()) {
                 ServerPlayer serverPlayer = (ServerPlayer) player;
                 BlockEntity be = world.getBlockEntity(pos);
                 if (be instanceof RedStonePubSubBlockEntity named) {
-                    // MenuProvider（= NamedScreenHandlerFactory）として開く
-                    var consumer = (Consumer<FriendlyByteBuf>) buf -> {
-                        buf.writeBlockPos(pos);  // ブロック位置を送信
-                        buf.writeUtf("Redstone Pub Sub Block");  // 名前を指定して開く
-                    };
-                    serverPlayer.openMenu(
-                        named,
-                        consumer
-                    );
+                    serverPlayer.openMenu(named);
                 }
             }
-            // クライアント／サーバー両方で「成功扱い」を返す
-            return ItemInteractionResult.sidedSuccess(world.isClientSide);
+            return world.isClientSide() ? InteractionResult.SUCCESS : InteractionResult.CONSUME;
         }
-        return super.useItemOn(held, state, world, pos, player, hand, hit);
-    }
 
-    @Override
-    public InteractionResult useWithoutItem(
-        BlockState state,
-        Level world,
-        BlockPos pos,
-        Player player,
-        BlockHitResult hit
-        ) {
-        if (world.isClientSide) {
+        if (world.isClientSide()) {
             return InteractionResult.SUCCESS;
         }
 

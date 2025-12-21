@@ -13,15 +13,15 @@ import simulation_interfaces.srv.SpawnEntity_Response;
 import simulation_interfaces.msg.Result;
 import org.ros2.rcljava.service.RMWRequestId;
 
-import net.minecraftforge.server.ServerLifecycleHooks;
+import net.neoforged.neoforge.server.ServerLifecycleHooks;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.entity.EntityType;
-import net.minecraftforge.registries.RegistryObject;
+import net.neoforged.neoforge.registries.DeferredHolder;
 import net.minecraft.network.chat.Component;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.fml.loading.FMLEnvironment;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.fml.loading.FMLEnvironment;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -168,7 +168,7 @@ public class SpawnEntityService  extends BaseComposableNode {
             jsonIndex = current_model_number;
             jsonFileNames.add(jsonFileName);
             LOGGER.info("SpawnEntityService assigned geometry {} to slot {}", jsonFileName, jsonIndex);
-            if (FMLEnvironment.dist == Dist.CLIENT) {
+            if (FMLEnvironment.getDist() == Dist.CLIENT) {
                 LOGGER.info("SpawnEntityService applying geometry {} into slot {}", jsonFileName, jsonIndex);
                 try {
                     GeometryApplier.applyJson(Paths.get(modelUri), "runtime_geo", jsonIndex);
@@ -203,10 +203,10 @@ public class SpawnEntityService  extends BaseComposableNode {
         }
         LOGGER.info("SpawnEntityService obtained overworld reference");
 
-        RegistryObject<EntityType<DynamicModelEntity>> ro = ModEntities.CUSTOM_ENTITY;
+        DeferredHolder<EntityType<?>, EntityType<DynamicModelEntity>> ro = ModEntities.CUSTOM_ENTITY;
         EntityType<DynamicModelEntity> type = ro.get();
         String customName = namespace != null && !namespace.isEmpty() ? namespace : modelName;
-        DynamicModelEntity robot = type.create(world);
+        DynamicModelEntity robot = type.create(world, net.minecraft.world.entity.EntitySpawnReason.SPAWN_ITEM_USE);
         if (robot == null) {
             LOGGER.error("Failed to create entity of type: {}", type);
             result.setResult(Byte.valueOf((byte) 0));
@@ -223,7 +223,7 @@ public class SpawnEntityService  extends BaseComposableNode {
         robot.setModelId(jsonIndex);
         LOGGER.info("SpawnEntityService assigned model id {} for {}", jsonIndex, customName);
 
-        robot.moveTo(x, y, z, 0.0F, 0.0F);
+        robot.setPos(x, y, z);
         LOGGER.info("SpawnEntityService moving entity {} to ({}, {}, {})", customName, x, y, z);
         world.addFreshEntity(robot);
         LOGGER.info("SpawnEntityService added entity {} to world", customName);

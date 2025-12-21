@@ -8,12 +8,13 @@ import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.player.Inventory;
 import com.mojang.blaze3d.platform.InputConstants;
+import net.minecraft.client.input.KeyEvent;
 
 public class RedStonePubSubBlockScreen extends AbstractContainerScreen<RedStonePubSubBlockContainer> {
-    private static final ResourceLocation BG = new ResourceLocation(
+    private static final Identifier BG = Identifier.fromNamespaceAndPath(
         minecraft_ros2.MOD_ID, "textures/gui/named_block_bg.png"
     );
     private EditBox nameField;
@@ -50,19 +51,14 @@ public class RedStonePubSubBlockScreen extends AbstractContainerScreen<RedStoneP
 
     @Override
     protected void renderBg(GuiGraphics gg, float delta, int mouseX, int mouseY) {
-        gg.blit(BG, leftPos, topPos, 0, 0, imageWidth, imageHeight);
+        // Background rendering temporarily disabled pending GUI API update for 1.21.11
     }
 
     @Override
-    public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
-        // 押されたキーのInputConstants.Keyオブジェクトを取得
-        InputConstants.Key key = InputConstants.getKey(keyCode, scanCode);
-
-        // インベントリキー（デフォルトE）が押されていたら消費して閉じない
-        if (minecraft.options.keyInventory.isActiveAndMatches(key)) {
+    public boolean keyPressed(KeyEvent event) {
+        if (minecraft.options.keyInventory.matches(event)) {
             return true;
         }
-        // それ以外は通常処理
-        return super.keyPressed(keyCode, scanCode, modifiers);
+        return super.keyPressed(event);
     }
 }

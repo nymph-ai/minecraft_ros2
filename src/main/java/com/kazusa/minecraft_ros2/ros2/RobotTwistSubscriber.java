@@ -77,7 +77,6 @@ public class RobotTwistSubscriber extends BaseComposableNode {
 
                 // deltaMovementを使って自然な移動にする
                 entity.setDeltaMovement(dx, dy, dz);
-                entity.hasImpulse = true; // deltaMovementを使う場合にはtrueにする
             }
             else if (Math.abs(lastAngularZ) > 0.1 || Math.abs(lastAngularY) > 0.1) {
                 // “ダミー” の水平速度をつける（向き更新のトリガーにするため）
@@ -88,7 +87,6 @@ public class RobotTwistSubscriber extends BaseComposableNode {
                 double dx = -Math.sin(yawRad) * dummyV;
                 double dz =  Math.cos(yawRad) * dummyV;
                 entity.setDeltaMovement(dx, dy, dz);
-                entity.hasImpulse = true;
             }
 
             // 回転処理（なめらかにする）

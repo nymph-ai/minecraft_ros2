@@ -1,25 +1,25 @@
 package com.kazusa.minecraft_ros2.config;
 
-import net.minecraftforge.common.ForgeConfigSpec;
+import net.neoforged.neoforge.common.ModConfigSpec;
 import org.apache.commons.lang3.tuple.Pair;
 
 public class Config {
-    public static final ForgeConfigSpec COMMON_SPEC;
+    public static final ModConfigSpec COMMON_SPEC;
     public static final CommonConfig COMMON;
 
     static {
-        Pair<CommonConfig, ForgeConfigSpec> specPair = new ForgeConfigSpec.Builder().configure(CommonConfig::new);
+        Pair<CommonConfig, ModConfigSpec> specPair = new ModConfigSpec.Builder().configure(CommonConfig::new);
         COMMON_SPEC = specPair.getRight();
         COMMON = specPair.getLeft();
     }
 
     public static class CommonConfig {
-        public final ForgeConfigSpec.IntValue maxSpeed;
-        public final ForgeConfigSpec.BooleanValue enableLogging;
-        public final ForgeConfigSpec.ConfigValue<String> topicName;
-        public final ForgeConfigSpec.BooleanValue enableDebugDataStreaming;
+        public final ModConfigSpec.IntValue maxSpeed;
+        public final ModConfigSpec.BooleanValue enableLogging;
+        public final ModConfigSpec.ConfigValue<String> topicName;
+        public final ModConfigSpec.BooleanValue enableDebugDataStreaming;
 
-        public CommonConfig(ForgeConfigSpec.Builder builder) {
+        public CommonConfig(ModConfigSpec.Builder builder) {
             builder.comment("ROS2 Minecraft Mod Configuration").push("general");
 
             maxSpeed = builder

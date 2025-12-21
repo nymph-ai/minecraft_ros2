@@ -1,6 +1,9 @@
 #!/bin/bash
 set -euo pipefail
 
+# Prefer the baked Gradle cache from the image to avoid rebuilding on startup.
+export GRADLE_USER_HOME=/root/.gradle
+
 # Some of the ROS setup helpers expect COLCON_TRACE to exist even if empty.
 if [ -z "${COLCON_TRACE+x}" ]; then
     export COLCON_TRACE=
@@ -33,15 +36,32 @@ if [[ -n "${MC_VERSION_NAME:-}" ]]; then
     ARGS+=("--versionName" "${MC_VERSION_NAME}")
 fi
 
+# Clear stale NeoForge userdev temp artifacts that can break create1.21.11ClientExtraJar.
+rm -rf /ws/minecraft_ros2/build/tmp/create1.21.11ClientExtraJar || true
+
 # Auto-connect to server if MC_SERVER is set
 if [[ -n "${MC_SERVER:-}" ]]; then
     ARGS+=("--quickPlayMultiplayer" "${MC_SERVER}")
 fi
 
-if [[ ${#ARGS[@]} -gt 0 ]]; then
-    ARG_STRING="$(printf '%s ' "${ARGS[@]}")"
-    ARG_STRING="${ARG_STRING% }"
-    ./gradlew runClient --stacktrace --args="${ARG_STRING}"
+run_gradle() {
+    local offline_flag=()
+    if [[ "${1:-}" == "offline" ]]; then
+        offline_flag=(--offline)
+    fi
+
+    if [[ ${#ARGS[@]} -gt 0 ]]; then
+        ARG_STRING="$(printf '%s ' "${ARGS[@]}")"
+        ARG_STRING="${ARG_STRING% }"
+        ./gradlew --no-daemon "${offline_flag[@]}" runClient --stacktrace --args="${ARG_STRING}"
+    else
+        ./gradlew --no-daemon "${offline_flag[@]}" runClient --stacktrace
+    fi
+}
+
+# Prefer offline if caches are present; fall back to online once to hydrate caches.
+if [[ -f /ws/minecraft_ros2/.gradle/caches/minecraft/versions/1.21.11/metadata.json ]]; then
+    run_gradle offline
 else
-    ./gradlew runClient --stacktrace
+    run_gradle online
 fi

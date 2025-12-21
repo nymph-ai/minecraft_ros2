@@ -1,21 +1,60 @@
 #!/bin/bash
 set -eo pipefail  # Removed -u to allow unbound variables in ROS setup scripts
 
-: "${DISPLAY:=:99}"
+: "${MC_HEADLESS_MODE:=egl}"
 
-start_xvfb() {
-    echo "[headless] starting Xvfb on ${DISPLAY}" >&2
-    Xvfb "$DISPLAY" \
-        -screen 0 1920x1080x24 \
-        -ac \
-        +extension GLX \
-        +extension RANDR \
-        +extension RENDER \
+# Xvfb/X11 path (kept for fallback; enable by setting MC_HEADLESS_MODE=x11).
+# : "${DISPLAY:=:99}"
+# start_xvfb() {
+#     echo "[headless] starting Xvfb on ${DISPLAY}" >&2
+#     Xvfb "$DISPLAY" \
+#         -screen 0 1920x1080x24 \
+#         -ac \
+#         +extension GLX \
+#         +extension RANDR \
+#         +extension RENDER \
+#         -nolisten tcp \
+#         -noreset >/dev/null 2>&1 &
+#     XVFB_PID=$!
+#     echo "[headless] Xvfb started with PID ${XVFB_PID}" >&2
+#     echo $XVFB_PID
+# }
+# wait_for_display() {
+#     echo "[headless] waiting for display ${DISPLAY} to become available..." >&2
+#     for _ in $(seq 1 30); do
+#         if DISPLAY="$DISPLAY" xdpyinfo >/dev/null 2>&1; then
+#             echo "[headless] display ${DISPLAY} is ready" >&2
+#             return 0
+#         fi
+#         sleep 1
+#     done
+#     echo "[headless] display ${DISPLAY} did not come up in time" >&2
+#     return 1
+# }
+
+start_xorg() {
+    : "${DISPLAY:=:99}"
+    export XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/tmp/xdg}"
+    mkdir -p "${XDG_RUNTIME_DIR}"
+    chmod 0700 "${XDG_RUNTIME_DIR}"
+
+    local config=""
+    if [ -f /usr/lib/xorg/modules/drivers/nvidia_drv.so ] || [ -f /usr/lib/x86_64-linux-gnu/nvidia/xorg/nvidia_drv.so ]; then
+        config="/etc/X11/xorg-nvidia-headless.conf"
+    elif [ -f /usr/lib/xorg/modules/drivers/modesetting_drv.so ]; then
+        config="/etc/X11/xorg-modesetting-headless.conf"
+    else
+        config="/etc/X11/xorg-headless.conf"
+    fi
+    echo "[headless] starting Xorg on ${DISPLAY} with config ${config}" >&2
+    Xorg "$DISPLAY" \
+        -config "${config}" \
+        -noreset \
         -nolisten tcp \
-        -noreset >/dev/null 2>&1 &
-    XVFB_PID=$!
-    echo "[headless] Xvfb started with PID ${XVFB_PID}" >&2
-    echo $XVFB_PID
+        -logfile /tmp/Xorg.log >/dev/null 2>&1 &
+    XORG_PID=$!
+    echo "[headless] Xorg started with PID ${XORG_PID}" >&2
+    echo $XORG_PID
 }
 
 wait_for_display() {
@@ -31,39 +70,97 @@ wait_for_display() {
     return 1
 }
 
-XVFB_PID=$(start_xvfb)
-cleanup() {
-    if ps -p "$XVFB_PID" >/dev/null 2>&1; then
-        kill "$XVFB_PID" || true
+if [ "${MC_HEADLESS_MODE}" = "xorg" ]; then
+    XORG_PID=$(start_xorg)
+    cleanup_xorg() {
+        if ps -p "$XORG_PID" >/dev/null 2>&1; then
+            kill "$XORG_PID" || true
+        fi
+    }
+    trap cleanup_xorg EXIT
+    if ! wait_for_display; then
+        echo "Xorg failed to start. Check /tmp/Xorg.log" >&2
+        exit 1
     fi
-}
-trap cleanup EXIT
-
-if ! wait_for_display; then
-    echo "Xvfb failed to start." >&2
-    exit 1
+elif [ "${MC_HEADLESS_MODE}" = "x11" ]; then
+    : "${DISPLAY:=:99}"
+    # XVFB_PID=$(start_xvfb)
+    # cleanup() {
+    #     if ps -p "$XVFB_PID" >/dev/null 2>&1; then
+    #         kill "$XVFB_PID" || true
+    #     fi
+    # }
+    # trap cleanup EXIT
+    # if ! wait_for_display; then
+    #     echo "Xvfb failed to start." >&2
+    #     exit 1
+    # fi
+    echo "[headless] X11 mode requested but Xvfb startup is commented out." >&2
+    echo "[headless] Set MC_HEADLESS_MODE=xorg for NVIDIA or re-enable Xvfb in this script." >&2
 fi
 
-sync_mod_jar() {
-    local cache_dir="${MOD_JAR_CACHE:-/opt/minecraft_ros2_mod}"
+ensure_mod_dir() {
     local dest_dir="/ws/minecraft_ros2/run/mods"
-
     mkdir -p "$dest_dir"
-
-    shopt -s nullglob
-    local copied=false
-    for jar in "$cache_dir"/minecraft_ros2-*.jar; do
-        cp -f "$jar" "$dest_dir"/
-        copied=true
-    done
-    shopt -u nullglob
-
-    if [ "$copied" = false ]; then
-        echo "[headless] warning: no packaged minecraft_ros2 jar found in ${cache_dir}" >&2
-    fi
 }
 
-sync_mod_jar
+ensure_mod_dir
+if [ -n "${MC_ASSETS_DIR:-}" ]; then
+    mkdir -p "${MC_ASSETS_DIR}"
+fi
+
+
+ensure_asset_index() {
+    if [ -z "${MC_ASSETS_DIR:-}" ]; then
+        return
+    fi
+    if [ -d "${MC_ASSETS_DIR}/indexes" ]; then
+        return
+    fi
+    echo "[headless] ensuring asset index in ${MC_ASSETS_DIR}" >&2
+    MINECRAFT_HOME="${MINECRAFT_HOME:-/opt/minecraft}" \
+    MC_ASSETS_DIR="${MC_ASSETS_DIR}" \
+    PREFETCH_ASSETS=false \
+    PYTHONUNBUFFERED=1 \
+    python3 -u /ws/minecraft_ros2/tools/prefetch_client.py || {
+        echo "[headless] WARNING: asset index fetch failed" >&2
+    }
+}
+
+ensure_asset_index
+
+ensure_quickplay_dir() {
+    if [ -z "${MC_SERVER:-}" ]; then
+        return
+    fi
+    local base_dir="${MC_GAME_DIR:-/ws/minecraft_ros2/run}"
+    local qp_dir="${MC_QUICKPLAY_PATH:-${base_dir}/quickplay}"
+    if [ -e "${qp_dir}" ] && [ ! -d "${qp_dir}" ]; then
+        local backup="${qp_dir}.bak.$(date +%s)"
+        mv "${qp_dir}" "${backup}"
+        echo "[headless] quickplay path was a file, moved to ${backup}" >&2
+    fi
+    mkdir -p "${qp_dir}"
+}
+
+ensure_quickplay_dir
+
+# Optional: download asset objects into a writable volume (can take time).
+prefetch_assets() {
+    if [ "${MC_ASSETS_PREFETCH:-false}" != "true" ]; then
+        return
+    fi
+    echo "[headless] prefetching Minecraft assets into ${MC_ASSETS_DIR:-/ws/minecraft_ros2/run/assets}" >&2
+    MINECRAFT_HOME="${MINECRAFT_HOME:-/opt/minecraft}" \
+    MC_ASSETS_DIR="${MC_ASSETS_DIR:-/ws/minecraft_ros2/run/assets}" \
+    PREFETCH_ASSETS=true \
+    PYTHONUNBUFFERED=1 \
+    python3 -u /ws/minecraft_ros2/tools/prefetch_client.py || {
+        echo "[headless] WARNING: asset prefetch failed" >&2
+    }
+}
+
+prefetch_assets
 
 # Start image capture service in background (runs in same container for reliable discovery)
 start_image_capture() {
@@ -79,8 +176,7 @@ start_image_capture() {
         echo "[headless] ERROR: Failed to source ROS setup" >&2
         return 1
     }
-    # Re-enable -u if it was set (but we removed it from top-level, so this is just for safety)
-    set -u || true
+    # Leave nounset disabled to avoid ROS setup using unbound variables.
     export IMAGE_TOPIC=${IMAGE_TOPIC:-/player/image_raw}
     export SAVE_IMAGES=${SAVE_IMAGES:-false}
     export IMAGE_SAVE_DIR=${IMAGE_SAVE_DIR:-/tmp/minecraft_images}
@@ -135,15 +231,10 @@ start_foxglove_bridge() {
         echo "[headless] ERROR: Failed to source ROS setup for Foxglove bridge" >&2
         return 1
     }
-    set -u || true
-    # Install Foxglove bridge if not already installed
+    # Leave nounset disabled to avoid ROS setup using unbound variables.
     if ! command -v ros2 &> /dev/null || ! ros2 pkg list | grep -q foxglove_bridge; then
-        echo "[headless] Installing Foxglove bridge..." >&2
-        apt-get update -qq && apt-get install -y -qq ros-humble-foxglove-bridge > /dev/null 2>&1 || {
-            echo "[headless] WARNING: Failed to install Foxglove bridge" >&2
-            return 1
-        }
-        source /opt/ros/humble/setup.bash
+        echo "[headless] WARNING: Foxglove bridge not installed, skipping" >&2
+        return 0
     fi
     FOXGLOVE_PORT=${FOXGLOVE_PORT:-8765}
     ros2 launch foxglove_bridge foxglove_bridge_launch.xml port:=$FOXGLOVE_PORT > /tmp/foxglove_bridge.log 2>&1 &
@@ -180,6 +271,5 @@ trap cleanup_image_capture EXIT
 # trap cleanup_image_bridge EXIT
 trap cleanup_foxglove_bridge EXIT
 
-echo "[headless] launching Minecraft client" >&2
-./runClient.sh
-
+echo "[headless] launching Minecraft client (no Gradle)" >&2
+python3 /ws/minecraft_ros2/tools/launch_client.py

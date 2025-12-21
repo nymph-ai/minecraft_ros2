@@ -2,7 +2,7 @@ plugins {
     id 'eclipse'
     id 'idea'
     id 'maven-publish'
-    id 'net.minecraftforge.gradle' version '[6.0.24,6.2)'
+    id 'net.neoforged.gradle.userdev' version '7.0.188'
 }
 
 version = mod_version
@@ -17,35 +17,24 @@ java.toolchain.languageVersion = JavaLanguageVersion.of(21)
 
 println "Java: ${System.getProperty 'java.version'}, JVM: ${System.getProperty 'java.vm.version'} (${System.getProperty 'java.vendor'}), Arch: ${System.getProperty 'os.arch'}"
 
-minecraft {
-    mappings channel: mapping_channel, version: mapping_version
-    reobf = false
-    copyIdeResources = true
+runs {
+    configureEach {
+        systemProperty 'forge.logging.markers', 'REGISTRIES'
+        systemProperty 'forge.logging.console.level', 'debug'
+        modSource project.sourceSets.main
+    }
 
-    runs {
-        configureEach {
-            workingDirectory project.file('run')
-            property 'forge.logging.markers', 'REGISTRIES'
-            property 'forge.logging.console.level', 'debug'
-        }
+    client {
+        systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
+    }
 
-        client {
-            property 'forge.enabledGameTestNamespaces', mod_id
-        }
+    server {
+        systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
+        arguments '--nogui'
+    }
 
-        server {
-            property 'forge.enabledGameTestNamespaces', mod_id
-            args '--nogui'
-        }
-
-        gameTestServer {
-            property 'forge.enabledGameTestNamespaces', mod_id
-        }
-
-        data {
-            workingDirectory project.file('run-data')
-            args '--mod', mod_id, '--all', '--output', file('src/generated/resources/'), '--existing', file('src/main/resources/')
-        }
+    gameTestServer {
+        systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
     }
 }
 
@@ -64,6 +53,10 @@ repositories {
         content {
             includeGroup("software.bernie.geckolib")
         }
+    }
+    maven {
+        name = 'Baritone'
+        url = 'https://jitpack.io'
     }
 }
 
@@ -99,9 +92,9 @@ def ros2MessageJars = ros2Messages.collect { msg ->
 }
 
 dependencies {
-    minecraft "net.minecraftforge:forge:${minecraft_version}-${forge_version}"
+    implementation "net.neoforged:neoforge:${neoforge_version}"
 
-    // ROS 2 Java 依存関係
+    // ROS 2 Java dependencies
     ros2PackageJars.each { jar ->
         implementation files(jar)
     }
@@ -110,11 +103,17 @@ dependencies {
         implementation files(jar)
     }
 
-    // 互換性のための設定
+    // Compatibility settings
     implementation('net.sf.jopt-simple:jopt-simple:5.0.4') {
         version { strictly '5.0.4' }
     }
-    implementation fg.deobf("software.bernie.geckolib:geckolib-forge-1.20.6:4.5.4.1")
+
+    // GeckoLib for NeoForge
+    implementation "software.bernie.geckolib:geckolib-neoforge-${minecraft_version}:${geckolib_version}"
+
+    // Baritone API for pathfinding and automation (from libs folder)
+    // v1.15.0 verified with Minecraft 1.21.11 (NeoForge)
+    implementation files('libs/baritone-api-forge-1.15.0.jar')
 }
 
 
@@ -122,8 +121,8 @@ tasks.named('processResources', ProcessResources).configure {
     var replaceProperties = [
             minecraft_version       : minecraft_version,
             minecraft_version_range : minecraft_version_range,
-            forge_version           : forge_version,
-            forge_version_range     : forge_version_range,
+            neoforge_version        : neoforge_version,
+            neoforge_version_range  : neoforge_version_range,
             loader_version_range    : loader_version_range,
             mod_id                  : mod_id,
             mod_name                : mod_name,
@@ -134,7 +133,7 @@ tasks.named('processResources', ProcessResources).configure {
     ]
     inputs.properties replaceProperties
 
-    filesMatching(['META-INF/mods.toml', 'pack.mcmeta']) {
+    filesMatching(['META-INF/neoforge.mods.toml', 'pack.mcmeta']) {
         expand replaceProperties + [project: project]
     }
 }

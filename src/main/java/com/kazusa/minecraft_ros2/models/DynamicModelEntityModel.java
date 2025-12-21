@@ -1,59 +1,77 @@
 package com.kazusa.minecraft_ros2.models;
 
 import net.minecraft.client.Minecraft;
-import net.minecraft.resources.ResourceLocation;
-import software.bernie.geckolib.model.GeoModel;
-import net.minecraft.server.packs.resources.ResourceManager;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.packs.resources.ReloadableResourceManager;
 import net.minecraft.server.packs.resources.Resource;
+import net.minecraft.server.packs.resources.ResourceManager;
+import net.minecraft.util.Mth;
+import software.bernie.geckolib.constant.dataticket.DataTicket;
+import software.bernie.geckolib.model.GeoModel;
+import software.bernie.geckolib.renderer.base.GeoRenderState;
 
-import java.util.List;
 import java.io.IOException;
-import java.util.Optional;
 import java.io.InputStream;
+import java.util.List;
+import java.util.Optional;
 
 public class DynamicModelEntityModel extends GeoModel<DynamicModelEntity> {
     public static final int MAX_MODEL_COUNT = 10; // 動的モデルの数
     // geometry.json のパス
-    private static final ResourceLocation DEFAULT_GEO =
-        new ResourceLocation("minecraft_ros2", "geo/custom_entity.geo.json");
-    private static final List<ResourceLocation> CUSTOM_GEO_LIST = List.of(
-        new ResourceLocation("runtime_geo", "geo/dynamic_model_0.geo.json"),
-        new ResourceLocation("runtime_geo", "geo/dynamic_model_1.geo.json"),
-        new ResourceLocation("runtime_geo", "geo/dynamic_model_2.geo.json"),
-        new ResourceLocation("runtime_geo", "geo/dynamic_model_3.geo.json"),
-        new ResourceLocation("runtime_geo", "geo/dynamic_model_4.geo.json"),
-        new ResourceLocation("runtime_geo", "geo/dynamic_model_5.geo.json"),
-        new ResourceLocation("runtime_geo", "geo/dynamic_model_6.geo.json"),
-        new ResourceLocation("runtime_geo", "geo/dynamic_model_7.geo.json"),
-        new ResourceLocation("runtime_geo", "geo/dynamic_model_8.geo.json"),
-        new ResourceLocation("runtime_geo", "geo/dynamic_model_9.geo.json")
+    private static final Identifier DEFAULT_GEO =
+        Identifier.fromNamespaceAndPath("minecraft_ros2", "geo/custom_entity.geo.json");
+    private static final DataTicket<Integer> MODEL_ID_TICKET =
+        DataTicket.create("minecraft_ros2:model_id", Integer.class);
+    private static final List<Identifier> CUSTOM_GEO_LIST = List.of(
+        Identifier.fromNamespaceAndPath("runtime_geo", "geo/dynamic_model_0.geo.json"),
+        Identifier.fromNamespaceAndPath("runtime_geo", "geo/dynamic_model_1.geo.json"),
+        Identifier.fromNamespaceAndPath("runtime_geo", "geo/dynamic_model_2.geo.json"),
+        Identifier.fromNamespaceAndPath("runtime_geo", "geo/dynamic_model_3.geo.json"),
+        Identifier.fromNamespaceAndPath("runtime_geo", "geo/dynamic_model_4.geo.json"),
+        Identifier.fromNamespaceAndPath("runtime_geo", "geo/dynamic_model_5.geo.json"),
+        Identifier.fromNamespaceAndPath("runtime_geo", "geo/dynamic_model_6.geo.json"),
+        Identifier.fromNamespaceAndPath("runtime_geo", "geo/dynamic_model_7.geo.json"),
+        Identifier.fromNamespaceAndPath("runtime_geo", "geo/dynamic_model_8.geo.json"),
+        Identifier.fromNamespaceAndPath("runtime_geo", "geo/dynamic_model_9.geo.json")
     );
 
     // テクスチャのパス（お好きなものを）
-    private static final ResourceLocation TEX =
-        new ResourceLocation("minecraft_ros2", "textures/entity/custom_entity.png");
+    private static final Identifier TEX =
+        Identifier.fromNamespaceAndPath("minecraft_ros2", "textures/entity/custom_entity.png");
     // アニメーションファイルが無ければ同じパスで空ファイル or 無視して OK
-    private static final ResourceLocation ANIM = null;
+    private static final Identifier ANIM = null;
 
+    // Geckolib 1.21 signatures
     @Override
-    public ResourceLocation getModelResource(DynamicModelEntity object) {
-        return resourceExists(CUSTOM_GEO_LIST.get(object.getModelId())) ?
-            CUSTOM_GEO_LIST.get(object.getModelId()) : DEFAULT_GEO; // 動的に設定されたジオメトリを使用
+    public Identifier getModelResource(GeoRenderState state) {
+        int modelId = state.getOrDefaultGeckolibData(MODEL_ID_TICKET, 0);
+        int clampedId = Mth.clamp(modelId, 0, CUSTOM_GEO_LIST.size() - 1);
+        Identifier selected = CUSTOM_GEO_LIST.get(clampedId);
+        return resourceExists(selected) ? selected : DEFAULT_GEO;
     }
 
     @Override
-    public ResourceLocation getTextureResource(DynamicModelEntity object) {
+    public Identifier getTextureResource(GeoRenderState state) {
         return TEX;
     }
 
     @Override
-    public ResourceLocation getAnimationResource(DynamicModelEntity animatable) {
+    public Identifier getAnimationResource(DynamicModelEntity animatable) {
         return ANIM;
     }
 
+    @Override
+    public void addAdditionalStateData(
+        DynamicModelEntity animatable,
+        Object instanceData,
+        GeoRenderState state
+    ) {
+        int clampedId = Mth.clamp(animatable.getModelId(), 0, CUSTOM_GEO_LIST.size() - 1);
+        state.addGeckolibData(MODEL_ID_TICKET, clampedId);
+    }
 
-    public static boolean resourceExists(ResourceLocation loc) {
+
+    public static boolean resourceExists(Identifier loc) {
         ResourceManager rm = Minecraft.getInstance().getResourceManager();
     
         // Forgeの実装では hasResource(ResourceLocation) があるので、あればそれを使う

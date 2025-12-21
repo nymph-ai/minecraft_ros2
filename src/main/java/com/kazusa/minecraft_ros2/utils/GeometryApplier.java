@@ -1,11 +1,11 @@
 package com.kazusa.minecraft_ros2.utils;
 
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
-import net.minecraftforge.fml.loading.FMLPaths;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.api.distmarker.OnlyIn;
+import net.neoforged.fml.loading.FMLPaths;
 
 import net.minecraft.client.Minecraft;
-import net.minecraftforge.server.ServerLifecycleHooks;
+import net.neoforged.neoforge.server.ServerLifecycleHooks;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.packs.repository.FolderRepositorySource;
 import net.minecraft.server.packs.PackType;
@@ -125,7 +125,7 @@ public class GeometryApplier {
 
     /**
      * @param sourceJsonPath  生成済みの .geo.json ファイルへのパス
-     * @param namespace       JSON を置く namespace（ResourceLocation の前半部分）
+     * @param namespace       JSON を置く namespace（Identifier の前半部分）
      * @param geomName        JSON ファイル名（拡張子抜き）
      */
     @OnlyIn(Dist.CLIENT)
@@ -177,7 +177,7 @@ public class GeometryApplier {
         Collection<String> resourcePacks = new ArrayList<>();
         repo.getSelectedPacks().stream()
             .map(Pack::getId)
-            .map(Object::toString)            // getId() が ResourceLocation を返す場合
+            .map(Object::toString)            // getId() が Identifier を返す場合
             .forEach(resourcePacks::add);
         server.reloadResources(resourcePacks);
     }

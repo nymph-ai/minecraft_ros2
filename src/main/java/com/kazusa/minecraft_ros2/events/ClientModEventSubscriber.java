@@ -7,29 +7,26 @@ import com.kazusa.minecraft_ros2.models.ModEntities;
 import com.kazusa.minecraft_ros2.menu.ModMenuTypes;
 import com.kazusa.minecraft_ros2.menu.RedStonePubSubBlockScreen;
 import com.kazusa.minecraft_ros2.network.NetworkHandler;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.client.event.EntityRenderersEvent;
-import net.minecraftforge.event.entity.EntityAttributeCreationEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.event.AddPackFindersEvent;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.neoforge.client.event.EntityRenderersEvent;
+import net.neoforged.neoforge.event.entity.EntityAttributeCreationEvent;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.neoforge.event.AddPackFindersEvent;
+import net.neoforged.neoforge.client.event.RegisterMenuScreensEvent;
 import net.minecraft.server.packs.PackType;
 import net.minecraft.server.packs.repository.FolderRepositorySource;
 import net.minecraft.server.packs.repository.PackSource;
 import net.minecraft.world.level.validation.DirectoryValidator;
-import net.minecraft.client.gui.screens.MenuScreens;
-import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.PathMatcher;
 
-@Mod.EventBusSubscriber(modid = minecraft_ros2.MOD_ID, bus = Mod.EventBusSubscriber.Bus.MOD, value = Dist.CLIENT)
 public class ClientModEventSubscriber {
 
     @SubscribeEvent
     public static void onRegisterRenderers(EntityRenderersEvent.RegisterRenderers event) {
-        // ModEntities.CUSTOM_ENTITY は DeferredRegister で作った RegistryObject<EntityType<DynamicModelEntity>>
+        // ModEntities.CUSTOM_ENTITY は DeferredRegister で作った DeferredHolder<EntityType<DynamicModelEntity>>
         event.registerEntityRenderer(
             ModEntities.CUSTOM_ENTITY.get(),
             DynamicModelEntityRenderer::new
@@ -56,17 +53,11 @@ public class ClientModEventSubscriber {
     }
 
     @SubscribeEvent
-    public static void onClientSetup(FMLClientSetupEvent event) {
-        event.enqueueWork(() -> {
-            // ここでリソースパックの初期化やその他のクライアント側のセットアップを行う
-            NetworkHandler.register(); // パケットハンドラーの登録
-        });
-        event.enqueueWork(() -> {
-            MenuScreens.register(
-                ModMenuTypes.REDSTONE_PUB_SUB_BLOCK_MENU.get(),
-                RedStonePubSubBlockScreen::new
-            );
-        });
+    public static void onRegisterMenuScreens(RegisterMenuScreensEvent event) {
+        event.register(
+            ModMenuTypes.REDSTONE_PUB_SUB_BLOCK_MENU.get(),
+            RedStonePubSubBlockScreen::new
+        );
     }
 
 }

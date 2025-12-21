@@ -74,7 +74,7 @@ public class SurroundingBlockArrayPublisher extends BaseComposableNode {
 
                         // 1) name
                         String name = world.registryAccess()
-                                            .registryOrThrow(Registries.BLOCK)
+                                            .lookupOrThrow(Registries.BLOCK)
                                             .getKey(block)
                                             .toString();
                         if (name.contains("air")) {
@@ -120,7 +120,7 @@ public class SurroundingBlockArrayPublisher extends BaseComposableNode {
                 .getConnection()
                 .getPlayerInfo(player.getUUID())
                 .getProfile()
-                .getName();
+                .name(); // GameProfile is a record in 1.21.11
             blockArray.getHeader().setFrameId(playerName);
 
             publisher.publish(blockArray);

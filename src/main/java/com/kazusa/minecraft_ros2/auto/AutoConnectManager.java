@@ -3,12 +3,16 @@ package com.kazusa.minecraft_ros2.auto;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.Options;
 import net.minecraft.client.gui.screens.ConnectScreen;
+import net.minecraft.client.gui.screens.DisconnectedScreen;
+import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.gui.screens.TitleScreen;
+import net.minecraft.client.gui.screens.AccessibilityOnboardingScreen;
 import net.minecraft.client.multiplayer.ServerData;
 import net.minecraft.client.multiplayer.TransferState;
 import net.minecraft.client.multiplayer.resolver.ServerAddress;
-import net.minecraftforge.common.MinecraftForge;
-import net.minecraftforge.event.TickEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.neoforged.neoforge.client.event.ClientTickEvent;
+import net.neoforged.neoforge.common.NeoForge;
+import net.neoforged.bus.api.SubscribeEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -29,6 +33,7 @@ public final class AutoConnectManager {
     private int attempts = 0;
     private int cooldownTicks = 0;
     private boolean skipInjected = false;
+    private boolean waitingLogged = false;
 
     private AutoConnectManager(Endpoint endpoint) {
         this.endpoint = endpoint;
@@ -48,56 +53,54 @@ public final class AutoConnectManager {
         }
 
         LOGGER.info("Enabling auto-connect for {}", endpoint.displayLabel());
-        MinecraftForge.EVENT_BUS.register(new AutoConnectManager(endpoint));
+        NeoForge.EVENT_BUS.register(new AutoConnectManager(endpoint));
     }
 
     @SubscribeEvent
-    public void onClientTick(TickEvent.ClientTickEvent event) {
-        if (event.phase != TickEvent.Phase.END) {
-            return;
-        }
-
+    public void onClientTick(ClientTickEvent.Post event) {
         Minecraft minecraft = Minecraft.getInstance();
-        if (minecraft == null) {
+        if (minecraft.level != null || minecraft.getConnection() != null) {
             return;
         }
-
-        if (minecraft.level != null && minecraft.player != null) {
-            LOGGER.info("Auto-connect complete; player is in a world.");
-            MinecraftForge.EVENT_BUS.unregister(this);
+        Screen current = minecraft.screen;
+        if (current instanceof AccessibilityOnboardingScreen) {
+            minecraft.setScreen(new TitleScreen());
+            current = minecraft.screen;
+        }
+        if (current instanceof ConnectScreen) {
             return;
         }
-
+        if (current != null
+            && !(current instanceof TitleScreen)
+            && !(current instanceof DisconnectedScreen)) {
+            if (!waitingLogged) {
+                LOGGER.info("Auto-connect waiting for title screen, current screen={}", current.getClass().getSimpleName());
+                waitingLogged = true;
+            }
+            return;
+        }
+        if (current == null && !waitingLogged) {
+            LOGGER.info("Auto-connect waiting for title screen, current screen=null");
+            waitingLogged = true;
+        }
         if (attempts >= MAX_ATTEMPTS) {
-            LOGGER.warn("Giving up after {} auto-connect attempts.", MAX_ATTEMPTS);
-            MinecraftForge.EVENT_BUS.unregister(this);
             return;
         }
-
-        if (minecraft.screen == null || minecraft.screen instanceof ConnectScreen) {
-            return;
-        }
-
         if (cooldownTicks > 0) {
             cooldownTicks--;
             return;
         }
 
         ensureSkipWarning(minecraft);
+
         attempts++;
         cooldownTicks = RETRY_DELAY_TICKS;
+        LOGGER.info("Auto-connect attempt {}/{} to {}", attempts, MAX_ATTEMPTS, endpoint.displayLabel());
 
-        ServerAddress address;
-        try {
-            address = endpoint.toServerAddress();
-        } catch (IllegalArgumentException ex) {
-            LOGGER.error("MC_SERVER value '{}' is not a valid address; disabling auto-connect.", endpoint.rawInput(), ex);
-            MinecraftForge.EVENT_BUS.unregister(this);
-            return;
-        }
-        ServerData serverData = new ServerData("minecraft_ros2", endpoint.rawInput(), ServerData.Type.OTHER);
-        LOGGER.info("Auto-connect attempt {} to {}", attempts, address);
-        ConnectScreen.startConnecting(minecraft.screen, minecraft, address, serverData, false, (TransferState) null);
+        Screen parent = current != null ? current : new TitleScreen();
+        ServerData serverData = new ServerData("minecraft_ros2", endpoint.displayLabel(), ServerData.Type.OTHER);
+        ServerAddress address = endpoint.toServerAddress();
+        ConnectScreen.startConnecting(parent, minecraft, address, serverData, false, (TransferState) null);
     }
 
     private void ensureSkipWarning(Minecraft minecraft) {
@@ -175,4 +178,3 @@ public final class AutoConnectManager {
         }
     }
 }
-

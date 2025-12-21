@@ -1,7 +1,7 @@
 package com.kazusa.minecraft_ros2.ros2;
 
 import net.minecraft.client.Minecraft;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.item.ItemStack;
@@ -13,7 +13,7 @@ import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.registries.ForgeRegistries;
+import net.minecraft.core.registries.BuiltInRegistries;
 import org.ros2.rcljava.Time;
 import org.ros2.rcljava.node.BaseComposableNode;
 import org.ros2.rcljava.publisher.Publisher;
@@ -37,7 +37,11 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
-
+/**
+ * @deprecated LIDAR functionality is deprecated and not maintained in NeoForge 1.21.11 builds.
+ * This class is kept for compatibility but should not be used in new code.
+ */
+@Deprecated
 public class PointCloudPublisher extends BaseComposableNode {
     private static final Logger LOGGER = LoggerFactory.getLogger(PointCloudPublisher.class);
 
@@ -49,7 +53,7 @@ public class PointCloudPublisher extends BaseComposableNode {
     private TFMessage tfMsg;
     private String lidarName;
     double halfHoriz;
-    private final Map<ResourceLocation, float[]> textureColorCache = new HashMap<>();
+    private final Map<Identifier, float[]> textureColorCache = new HashMap<>();
     private final AtomicBoolean publishPC2 = new AtomicBoolean(false);
 
     // Parameters
@@ -115,7 +119,7 @@ public class PointCloudPublisher extends BaseComposableNode {
     private void playerHaveLiDAR() {
         @SuppressWarnings("null")
         ItemStack helmet = minecraft.player.getItemBySlot(EquipmentSlot.HEAD);
-        ResourceLocation key = ForgeRegistries.ITEMS.getKey(helmet.getItem());
+        Identifier key = BuiltInRegistries.ITEM.getKey(helmet.getItem());
         String objectKeyName = key.toString();
         boolean isRos2 = objectKeyName.contains("minecraft_ros2");
 
@@ -459,23 +463,15 @@ public class PointCloudPublisher extends BaseComposableNode {
 
     /**
      * Get average color of Entity
+     * @deprecated Texture loading disabled for 1.21.11 due to API changes
      */
-
+    @Deprecated
     private void preloadAllEntityTextures() {
-        var dispatcher = minecraft.getEntityRenderDispatcher();
-        dispatcher.renderers.values().forEach(renderer -> {
-            try {
-                @SuppressWarnings("null")
-                ResourceLocation loc = renderer.getTextureLocation(null);
-                if (loc == null || loc.getPath().startsWith("textures/atlas/")) return;
-                textureColorCache.computeIfAbsent(loc, this::computeAverageColor);
-            } catch (Exception e) {
-                LOGGER.warn("Failed to preload: {}", e.toString());
-            }
-        });
+        // Texture loading disabled in 1.21.11 - getTextureLocation signature changed
+        // LIDAR functionality is deprecated, so this is stubbed out
     }
 
-    private float[] computeAverageColor(ResourceLocation loc) {
+    private float[] computeAverageColor(Identifier loc) {
         try (InputStream in = minecraft.getResourceManager().getResource(loc).get().open()) {
             BufferedImage img = ImageIO.read(in);
             long r=0, g=0, b=0, count=0;
@@ -499,18 +495,9 @@ public class PointCloudPublisher extends BaseComposableNode {
 
     private Map<Entity, float[]> computeEntityColors(List<Entity> entities) {
         var map = new HashMap<Entity, float[]>();
+        // Texture loading disabled in 1.21.11 - use default white color
         for (Entity e : entities) {
-            try {
-                ResourceLocation loc = minecraft.getEntityRenderDispatcher()
-                                                 .getRenderer(e)
-                                                 .getTextureLocation(e);
-                float[] col = (loc != null)
-                    ? textureColorCache.getOrDefault(loc, new float[]{1f,1f,1f})
-                    : new float[]{1f,1f,1f};
-                map.put(e, col);
-            } catch (Exception ex) {
-                map.put(e, new float[]{1f,1f,1f});
-            }
+            map.put(e, new float[]{1f,1f,1f});
         }
         return map;
     }

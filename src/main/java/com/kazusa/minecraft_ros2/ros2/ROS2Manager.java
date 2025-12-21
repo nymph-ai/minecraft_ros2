@@ -1,6 +1,7 @@
 package com.kazusa.minecraft_ros2.ros2;
 
 import com.kazusa.minecraft_ros2.models.DynamicModelEntity;
+import com.kazusa.minecraft_ros2.minecraft_ros2;
 import com.kazusa.minecraft_ros2.config.Config;
 import com.kazusa.minecraft_ros2.block.RedstonePubSubBlock;
 import net.minecraft.core.BlockPos;
@@ -8,8 +9,8 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.client.Minecraft;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.fml.loading.FMLEnvironment;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.fml.loading.FMLEnvironment;
 import org.ros2.rcljava.RCLJava;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -38,22 +39,29 @@ public final class ROS2Manager {
     private SurroundingBlockArrayPublisher surroundingBlockArrayPublisher;
     private LivingEntitiesPublisher livingEntitiesPublisher;
     private PlayerStatusPublisher playerStatusPublisher;
+    private BaritoneSubscriber baritoneSubscriber;
 
     private SpawnEntityService spawnEntityService;
     private DigBlockService digBlockService;
     
     private final boolean isClientEnvironment;
+    private final boolean baritoneEnabled;
 
     private ROS2Manager() {
         // Private constructor for singleton
-        this.isClientEnvironment = FMLEnvironment.dist == Dist.CLIENT;
+        this.isClientEnvironment = FMLEnvironment.getDist() == Dist.CLIENT;
+        this.baritoneEnabled = Boolean.parseBoolean(System.getenv().getOrDefault("MINECRAFT_ROS2_ENABLE_BARITONE", "false"));
     }
 
     public ImagePublisher getImagePublisher() {
         return imagePublisher;
     }
 
-    
+    public BaritoneSubscriber getBaritoneSubscriber() {
+        return baritoneSubscriber;
+    }
+
+
     /**
      * Get the singleton instance of the ROS2Manager
      */
@@ -84,9 +92,18 @@ public final class ROS2Manager {
                 
                 // Create subscriber
                 commandSubscriber = new CommandSubscriber();
-                spawnEntityService = new SpawnEntityService();
-                digBlockService = new DigBlockService();
+                if (minecraft_ros2.isDeprecatedWorldContentEnabled()) {
+                    spawnEntityService = new SpawnEntityService();
+                    digBlockService = new DigBlockService();
+                } else {
+                    LOGGER.warn("Spawn entity and redstone pub/sub features are deprecated and disabled.");
+                }
                 twistSubscriber = new TwistSubscriber();
+                if (baritoneEnabled) {
+                    baritoneSubscriber = new BaritoneSubscriber();
+                } else {
+                    LOGGER.info("Baritone integration disabled. Set MINECRAFT_ROS2_ENABLE_BARITONE=true to enable.");
+                }
                 imagePublisher = new ImagePublisher();
                 pointCloudPublisher = new PointCloudPublisher();
                 imuPublisher = new IMUPublisher();
@@ -119,6 +136,9 @@ public final class ROS2Manager {
                             if (commandSubscriber != null) {
                                 RCLJava.spinSome(commandSubscriber);
                             }
+                            if (baritoneSubscriber != null) {
+                                RCLJava.spinSome(baritoneSubscriber);
+                            }
                             if (imagePublisher != null) {
                                 RCLJava.spinSome(imagePublisher);
                             }
@@ -149,20 +169,22 @@ public final class ROS2Manager {
                                 RCLJava.spinSome(digBlockService);
                             }
 
-                            Level world = Minecraft.getInstance().level;
-                            if (world != null) {
-                                Set<BlockPos> all = RedstonePubSubBlock.getAllInstances();
-                                for (BlockPos pos : all) {
-                                    BlockState state = world.getBlockState(pos);
-                                    Block block = state.getBlock();
-                                    if (block instanceof RedstonePubSubBlock redstoneBlock) {
-                                        BlockIntPublisher publisher = redstoneBlock.getPublisher();
-                                        if (publisher != null) {
-                                            RCLJava.spinSome(publisher);
-                                        }
-                                        BlockBoolSubscriber subscriber = redstoneBlock.getSubscriber();
-                                        if (subscriber != null) {
-                                            RCLJava.spinSome(subscriber);
+                            if (minecraft_ros2.isDeprecatedWorldContentEnabled()) {
+                                Level world = Minecraft.getInstance().level;
+                                if (world != null) {
+                                    Set<BlockPos> all = RedstonePubSubBlock.getAllInstances();
+                                    for (BlockPos pos : all) {
+                                        BlockState state = world.getBlockState(pos);
+                                        Block block = state.getBlock();
+                                        if (block instanceof RedstonePubSubBlock redstoneBlock) {
+                                            BlockIntPublisher publisher = redstoneBlock.getPublisher();
+                                            if (publisher != null) {
+                                                RCLJava.spinSome(publisher);
+                                            }
+                                            BlockBoolSubscriber subscriber = redstoneBlock.getSubscriber();
+                                            if (subscriber != null) {
+                                                RCLJava.spinSome(subscriber);
+                                            }
                                         }
                                     }
                                 }

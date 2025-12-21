@@ -89,7 +89,7 @@ public class TwistSubscriber extends BaseComposableNode {
 
                 // Use deltaMovement for natural movement
                 player.setDeltaMovement(dx, dy, dz);
-                player.hasImpulse = true; // Set to true when using deltaMovement
+                // hasImpulse field removed in 1.21.11
 
                 if (loggingEnabled) {
                     LOGGER.info(

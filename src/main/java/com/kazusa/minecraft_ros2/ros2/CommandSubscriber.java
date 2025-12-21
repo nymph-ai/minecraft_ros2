@@ -3,7 +3,7 @@ package com.kazusa.minecraft_ros2.ros2;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.server.MinecraftServer;
-import net.minecraftforge.server.ServerLifecycleHooks;
+import net.neoforged.neoforge.server.ServerLifecycleHooks;
 import org.ros2.rcljava.node.BaseComposableNode;
 import org.ros2.rcljava.service.RMWRequestId;
 import org.slf4j.Logger;
@@ -48,8 +48,8 @@ public class CommandSubscriber extends BaseComposableNode {
         }
 
         server.execute(() -> {
-            CommandSourceStack source = server.createCommandSourceStack()
-                    .withPermission(2);
+            CommandSourceStack source = server.createCommandSourceStack();
+            // NeoForge 1.21.11 uses PermissionSet; default permission is sufficient for now.
             try {
                 server.getCommands()
                         .getDispatcher()
