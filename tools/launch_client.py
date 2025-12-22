@@ -134,6 +134,13 @@ def append_extra_libs(classpath: list[str]) -> None:
     if not extra_dir.exists():
         return
     for jar in sorted(extra_dir.glob("*.jar")):
+        # Keep Baritone runtime as a mod; allow API jar for compile-time classes.
+        if (
+            jar.name.startswith("baritone-api-")
+            or jar.name.startswith("baritone-standalone-")
+            or jar.name.startswith("baritone-unoptimized-")
+        ):
+            continue
         classpath.append(str(jar))
 
 

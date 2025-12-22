@@ -1,12 +1,15 @@
 services:
   minecraft:
-    build: .
+    build:
+      context: ..
+      dockerfile: minecraft_ros2/Dockerfile
     image: minecraft-ros2/minecraft-ros2-local-build
     pull_policy: never
     command: ./runClient.sh
     environment:
       - DISPLAY=${DISPLAY}
       - QT_X11_NO_MITSHM=1
+      - MINECRAFT_ROS2_ENABLE_BARITONE=true
     volumes:
       - /tmp/.X11-unix:/tmp/.X11-unix
       - ./.cache/minecraft:/ws/minecraft_ros2/run
@@ -21,6 +24,9 @@ services:
   rviz:
     image: minecraft-ros2/minecraft-ros2-local-build
     pull_policy: never
+    build:
+      context: ..
+      dockerfile: minecraft_ros2/Dockerfile
     command: ./runRviz.sh
     environment:
       - DISPLAY=${DISPLAY}

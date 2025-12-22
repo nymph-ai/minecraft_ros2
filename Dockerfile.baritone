@@ -13,8 +13,8 @@ RUN sed -i 's/^minecraft_version=.*/minecraft_version=1.21.11/' gradle.propertie
 RUN ./gradlew build -x test --no-daemon || true
 
 # Extract the built JAR
-RUN find build/libs -name "baritone-api-*.jar" -exec cp {} /build/baritone-api-forge-1.15.0.jar \;
+RUN find build/libs -name "baritone-api-*.jar" -exec cp {} /build/baritone-api-neoforge-1.15.0.jar \;
 
 # Minimal output stage - just the JAR
 FROM scratch AS artifact
-COPY --from=baritone-builder /build/baritone-api-forge-1.15.0.jar /
+COPY --from=baritone-builder /build/baritone-api-neoforge-1.15.0.jar /

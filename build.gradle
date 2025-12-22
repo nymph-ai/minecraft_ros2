@@ -112,8 +112,9 @@ dependencies {
     implementation "software.bernie.geckolib:geckolib-neoforge-${minecraft_version}:${geckolib_version}"
 
     // Baritone API for pathfinding and automation (from libs folder)
+    // Loaded as a mod at runtime; compile-only to avoid classpath conflicts.
     // v1.15.0 verified with Minecraft 1.21.11 (NeoForge)
-    implementation files('libs/baritone-api-forge-1.15.0.jar')
+    compileOnly files('libs/baritone-api-neoforge-1.15.0.jar')
 }
 
 

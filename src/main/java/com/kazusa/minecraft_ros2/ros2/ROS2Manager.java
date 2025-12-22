@@ -45,12 +45,12 @@ public final class ROS2Manager {
     private DigBlockService digBlockService;
     
     private final boolean isClientEnvironment;
-    private final boolean baritoneEnabled;
+    private final String baritoneEnabledEnv;
 
     private ROS2Manager() {
         // Private constructor for singleton
         this.isClientEnvironment = FMLEnvironment.getDist() == Dist.CLIENT;
-        this.baritoneEnabled = Boolean.parseBoolean(System.getenv().getOrDefault("MINECRAFT_ROS2_ENABLE_BARITONE", "false"));
+        this.baritoneEnabledEnv = System.getenv("MINECRAFT_ROS2_ENABLE_BARITONE");
     }
 
     public ImagePublisher getImagePublisher() {
@@ -99,10 +99,13 @@ public final class ROS2Manager {
                     LOGGER.warn("Spawn entity and redstone pub/sub features are deprecated and disabled.");
                 }
                 twistSubscriber = new TwistSubscriber();
+                boolean baritoneEnabled = baritoneEnabledEnv != null
+                        ? Boolean.parseBoolean(baritoneEnabledEnv)
+                        : Config.COMMON.enableBaritone.get();
                 if (baritoneEnabled) {
                     baritoneSubscriber = new BaritoneSubscriber();
                 } else {
-                    LOGGER.info("Baritone integration disabled. Set MINECRAFT_ROS2_ENABLE_BARITONE=true to enable.");
+                    LOGGER.info("Baritone integration disabled. Set enableBaritone=true in config or MINECRAFT_ROS2_ENABLE_BARITONE=true to enable.");
                 }
                 imagePublisher = new ImagePublisher();
                 pointCloudPublisher = new PointCloudPublisher();

@@ -104,7 +104,31 @@ ensure_mod_dir() {
     mkdir -p "$dest_dir"
 }
 
+install_baritone_mod() {
+    local dest_dir="/ws/minecraft_ros2/run/mods"
+    local baritone_src=""
+    rm -f "${dest_dir}/baritone-api-forge-1.15.0.jar" \
+        "${dest_dir}/baritone-api-neoforge-1.15.0.jar" \
+        "${dest_dir}/baritone-standalone-neoforge-1.15.0.jar"
+    if [ -f "${dest_dir}/baritone-unoptimized-neoforge-1.15.0.jar" ]; then
+        echo "[headless] Baritone mod jar already present in ${dest_dir}" >&2
+        return
+    fi
+    if [ -f /opt/minecraft_ros2_libs/baritone-unoptimized-neoforge-1.15.0.jar ]; then
+        baritone_src="/opt/minecraft_ros2_libs/baritone-unoptimized-neoforge-1.15.0.jar"
+    elif [ -f /ws/minecraft_ros2/libs/baritone-unoptimized-neoforge-1.15.0.jar ]; then
+        baritone_src="/ws/minecraft_ros2/libs/baritone-unoptimized-neoforge-1.15.0.jar"
+    fi
+    if [ -n "$baritone_src" ]; then
+        cp -f "$baritone_src" "$dest_dir/"
+        echo "[headless] ensured Baritone mod jar in ${dest_dir}" >&2
+    else
+        echo "[headless] WARNING: Baritone jar not found; pathfinding will be unavailable" >&2
+    fi
+}
+
 ensure_mod_dir
+install_baritone_mod
 if [ -n "${MC_ASSETS_DIR:-}" ]; then
     mkdir -p "${MC_ASSETS_DIR}"
 fi

@@ -39,6 +39,26 @@ fi
 # Clear stale NeoForge userdev temp artifacts that can break create1.21.11ClientExtraJar.
 rm -rf /ws/minecraft_ros2/build/tmp/create1.21.11ClientExtraJar || true
 
+ensure_baritone_mod() {
+    local dest_dir="/ws/minecraft_ros2/run/mods"
+    mkdir -p "$dest_dir"
+    rm -f "${dest_dir}/baritone-api-forge-1.15.0.jar" \
+        "${dest_dir}/baritone-api-neoforge-1.15.0.jar" \
+        "${dest_dir}/baritone-standalone-neoforge-1.15.0.jar"
+    if [ -f "${dest_dir}/baritone-unoptimized-neoforge-1.15.0.jar" ]; then
+        echo "[client] Baritone mod jar already present in ${dest_dir}" >&2
+        return
+    fi
+    if [ -f /ws/minecraft_ros2/libs/baritone-unoptimized-neoforge-1.15.0.jar ]; then
+        cp -f /ws/minecraft_ros2/libs/baritone-unoptimized-neoforge-1.15.0.jar "$dest_dir/"
+        echo "[client] ensured Baritone mod jar in ${dest_dir}" >&2
+    else
+        echo "[client] WARNING: Baritone jar not found; pathfinding will be unavailable" >&2
+    fi
+}
+
+ensure_baritone_mod
+
 # Auto-connect to server if MC_SERVER is set
 if [[ -n "${MC_SERVER:-}" ]]; then
     ARGS+=("--quickPlayMultiplayer" "${MC_SERVER}")

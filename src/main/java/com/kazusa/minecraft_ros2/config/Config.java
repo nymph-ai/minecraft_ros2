@@ -18,6 +18,7 @@ public class Config {
         public final ModConfigSpec.BooleanValue enableLogging;
         public final ModConfigSpec.ConfigValue<String> topicName;
         public final ModConfigSpec.BooleanValue enableDebugDataStreaming;
+        public final ModConfigSpec.BooleanValue enableBaritone;
 
         public CommonConfig(ModConfigSpec.Builder builder) {
             builder.comment("ROS2 Minecraft Mod Configuration").push("general");
@@ -37,6 +38,10 @@ public class Config {
             enableDebugDataStreaming = builder
                     .comment("Enable or disable the debug data stream for additional information")
                     .define("enableDebugDataStreaming", false);
+
+            enableBaritone = builder
+                    .comment("Enable Baritone integration for ROS2 goal topics")
+                    .define("enableBaritone", true);
 
             builder.pop();
         }
