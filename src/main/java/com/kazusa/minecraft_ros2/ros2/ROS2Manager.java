@@ -40,6 +40,7 @@ public final class ROS2Manager {
     private LivingEntitiesPublisher livingEntitiesPublisher;
     private PlayerStatusPublisher playerStatusPublisher;
     private BaritoneSubscriber baritoneSubscriber;
+    private BaritonePathPublisher baritonePathPublisher;
 
     private SpawnEntityService spawnEntityService;
     private DigBlockService digBlockService;
@@ -104,6 +105,9 @@ public final class ROS2Manager {
                         : Config.COMMON.enableBaritone.get();
                 if (baritoneEnabled) {
                     baritoneSubscriber = new BaritoneSubscriber();
+                    baritonePathPublisher = new BaritonePathPublisher(
+                            baritoneSubscriber.getBaritone()
+                    );
                 } else {
                     LOGGER.info("Baritone integration disabled. Set enableBaritone=true in config or MINECRAFT_ROS2_ENABLE_BARITONE=true to enable.");
                 }
@@ -141,6 +145,9 @@ public final class ROS2Manager {
                             }
                             if (baritoneSubscriber != null) {
                                 RCLJava.spinSome(baritoneSubscriber);
+                            }
+                            if (baritonePathPublisher != null) {
+                                RCLJava.spinSome(baritonePathPublisher);
                             }
                             if (imagePublisher != null) {
                                 RCLJava.spinSome(imagePublisher);
