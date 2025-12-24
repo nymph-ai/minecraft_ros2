@@ -40,7 +40,7 @@ Controls the overall flow of tasks (e.g., navigating to a goal). Tasks are descr
 
 ## Requirements
 
-* **ROS 2 Humble** (Ubuntu 22.04 recommended)
+* **ROS 2 Jazzy** (Ubuntu 24.04 recommended)
 * Development tools: `git`, `vcstool`, `colcon`, `rosdep`
 * Repository: `minecraft_ros2_example`
 * Packages: `minecraft_ros2` family (retrieved via `.repos` file)
@@ -61,10 +61,10 @@ rosdep update
 ### 1. Source ROS 2 Environment
 
 ```bash
-source /opt/ros/humble/setup.bash
+source /opt/ros/jazzy/setup.bash
 ```
 
-(Ensures `ROS_DISTRO=humble` is active)
+(Ensures `ROS_DISTRO=jazzy` is active)
 
 ### 2. Create Workspace & Get Samples
 

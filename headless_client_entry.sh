@@ -196,7 +196,7 @@ start_image_capture() {
     # Source ROS setup (disable error on unbound vars temporarily)
     # The ROS setup script uses unbound variables, so we need to disable -u
     set +u || true
-    source /opt/ros/humble/setup.bash || {
+    source /opt/ros/jazzy/setup.bash || {
         echo "[headless] ERROR: Failed to source ROS setup" >&2
         return 1
     }
@@ -228,7 +228,7 @@ start_image_capture
 #         return
 #     fi
 #     set +u || true
-#     source /opt/ros/humble/setup.bash || {
+#     source /opt/ros/jazzy/setup.bash || {
 #         echo "[headless] ERROR: Failed to source ROS setup for bridge" >&2
 #         return 1
 #     }
@@ -251,12 +251,12 @@ echo "[headless] image bridge disabled - Foxglove subscribes directly to Java pu
 start_foxglove_bridge() {
     echo "[headless] starting Foxglove bridge for visualization" >&2
     set +u || true
-    source /opt/ros/humble/setup.bash || {
+    source /opt/ros/jazzy/setup.bash || {
         echo "[headless] ERROR: Failed to source ROS setup for Foxglove bridge" >&2
         return 1
     }
     # Leave nounset disabled to avoid ROS setup using unbound variables.
-    if ! command -v ros2 &> /dev/null || ! ros2 pkg list | grep -q foxglove_bridge; then
+    if ! command -v ros2 &> /dev/null || ! ros2 pkg prefix foxglove_bridge >/dev/null 2>&1; then
         echo "[headless] WARNING: Foxglove bridge not installed, skipping" >&2
         return 0
     fi

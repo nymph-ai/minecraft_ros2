@@ -1,6 +1,6 @@
 # 自己位置推定とマッピング（Localization & Mapping）
 
-This tutorial introduces **LiDAR-SLAM in Minecraft with ROS 2 (Humble)** to help you experience how a robot estimates its **own position** and builds a **map** of the environment.
+This tutorial introduces **LiDAR-SLAM in Minecraft with ROS 2 (Jazzy)** to help you experience how a robot estimates its **own position** and builds a **map** of the environment.
 
 ---
 
@@ -29,7 +29,7 @@ In this tutorial, you will run **LiDAR-SLAM** in the Minecraft world.
 
 ## Tutorial Overview
 
-1. Install ROS 2 Humble and developer tools
+1. Install ROS 2 Jazzy and developer tools
 2. Fetch and build the sample workspace
 3. Run SLAM in one terminal
 4. Run the Minecraft client in another terminal
@@ -39,7 +39,7 @@ In this tutorial, you will run **LiDAR-SLAM** in the Minecraft world.
 
 ## Requirements
 
-* **ROS 2 Humble** (Ubuntu 22.04)
+* **ROS 2 Jazzy** (Ubuntu 24.04)
 * Tools: `git`, `vcstool`, `colcon`, `rosdep`
 * Repository: `minecraft_ros2_example`
 * Packages: `minecraft_ros2` (via `.repos` file)
@@ -62,7 +62,7 @@ rosdep update
 ### 1. Source ROS 2 Environment
 
 ```bash
-source /opt/ros/humble/setup.bash
+source /opt/ros/jazzy/setup.bash
 ```
 
 ### 2. Fetch the Sample Workspace
@@ -133,7 +133,7 @@ In RViz, add:
 
 ## Troubleshooting
 
-* **`command not found: ros2/colcon`** → Make sure you sourced `/opt/ros/humble/setup.bash`.
+* **`command not found: ros2/colcon`** → Make sure you sourced `/opt/ros/jazzy/setup.bash`.
 * **`rosdep` errors** → Run `sudo rosdep init` and `rosdep update`.
 * **Missing or non-executable `runClient.sh`** → `chmod +x runClient.sh`.
 * **Build fails (missing deps)** → Run `rosdep install ...` again.

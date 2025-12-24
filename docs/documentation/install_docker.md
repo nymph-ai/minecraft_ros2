@@ -2,7 +2,7 @@
 
 ## System Requirements
 
-* Ubuntu 22.04
+* Ubuntu 24.04
 * Docker
 * NVIDIA Container Toolkit
 

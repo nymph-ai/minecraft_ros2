@@ -36,7 +36,7 @@ Navigation2は主に以下のレイヤーに分かれています。
 
 ## 前提
 
-* **ROS 2 Humble**（Ubuntu 22.04 を想定）
+* **ROS 2 Jazzy**（Ubuntu 24.04 を想定）
 * `git`, `vcstool`, `colcon`, `rosdep` などのビルド/取得ツール
 * リポジトリ：`minecraft_ros2_example`
 * パッケージ群：`minecraft_ros2` 系（`.repos` でまとめて取得）
@@ -58,10 +58,10 @@ rosdep update
 ### 1. ROS 2 環境を読み込む
 
 ```bash
-source /opt/ros/humble/setup.bash
+source /opt/ros/jazzy/setup.bash
 ```
 
-（これで `ROS_DISTRO=humble` が有効になります）
+（これで `ROS_DISTRO=jazzy` が有効になります）
 
 ### 2. ワークスペース作成＆サンプル取得
 

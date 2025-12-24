@@ -1,6 +1,6 @@
 # 自己位置推定とマッピング
 
-このチュートリアルは、**Minecraft の世界を舞台に ROS 2（Humble）で LiDAR-SLAM を動かし、ロボットの「自己位置推定」を体験**するためのものです。初心者でも迷わないように、「自己位置推定」「SLAM」の意味から、実際のコマンド実行まで順を追って説明します。
+このチュートリアルは、**Minecraft の世界を舞台に ROS 2（Jazzy）で LiDAR-SLAM を動かし、ロボットの「自己位置推定」を体験**するためのものです。初心者でも迷わないように、「自己位置推定」「SLAM」の意味から、実際のコマンド実行まで順を追って説明します。
 
 
 ## 自己位置推定（Localization）とは？
@@ -25,7 +25,7 @@ LiDAR-SLAM なら、LiDAR が見た周囲の形（壁や障害物）から\*\*�
 
 ## このチュートリアルでやること（全体像）
 
-1. ROS 2 Humble と開発ツールを整える
+1. ROS 2 Jazzy と開発ツールを整える
 2. ワークスペースにサンプル群を取得・依存関係を解決してビルド
 3. **Terminal 1** で SLAM を起動
 4. **Terminal 2** で Minecraft クライアント（ROS 連携）を起動
@@ -34,7 +34,7 @@ LiDAR-SLAM なら、LiDAR が見た周囲の形（壁や障害物）から\*\*�
 
 ## 前提
 
-* **ROS 2 Humble**（Ubuntu 22.04 を想定）
+* **ROS 2 Jazzy**（Ubuntu 24.04 を想定）
 * `git`, `vcstool`, `colcon`, `rosdep` などのビルド/取得ツール
 * リポジトリ：`minecraft_ros2_example`
 * パッケージ群：`minecraft_ros2` 系（`.repos` でまとめて取得）
@@ -56,10 +56,10 @@ rosdep update
 ### 1. ROS 2 環境を読み込む
 
 ```bash
-source /opt/ros/humble/setup.bash
+source /opt/ros/jazzy/setup.bash
 ```
 
-（これで `ROS_DISTRO=humble` が有効になります）
+（これで `ROS_DISTRO=jazzy` が有効になります）
 
 ### 2. ワークスペース作成＆サンプル取得
 
@@ -119,7 +119,7 @@ cd ~/minecraft_ros2
 ## うまくいかないとき（よくあるつまずき）
 
 * **`command not found: ros2/colcon`**
-  → ROS 2 をインストールしていない or ターミナルで `source /opt/ros/humble/setup.bash` を忘れている。
+  → ROS 2 をインストールしていない or ターミナルで `source /opt/ros/jazzy/setup.bash` を忘れている。
 * **`rosdep` でエラー**
   → `sudo rosdep init` と `rosdep update` を実行。プロキシ環境ならネットワーク設定を確認。
 * **`runClient.sh` が無い/実行権がない**

@@ -1,4 +1,5 @@
-FROM ghcr.io/minecraft-ros2/ros2_java:latest AS modbuilder
+ARG ROS2_JAVA_BASE=ros2_java_cyclone:latest
+FROM ${ROS2_JAVA_BASE} AS modbuilder
 ENV ROS2JAVA_INSTALL_PATH=/ws/ros2_java_ws/install
 WORKDIR /src
 
@@ -20,7 +21,7 @@ COPY minecraft_ros2/ .
 RUN ./gradlew --no-daemon clean jar
 RUN ./gradlew --no-daemon create1.21.11ClientExtraJar writeMinecraftClasspathClient
 
-FROM ghcr.io/minecraft-ros2/ros2_java:latest
+FROM ${ROS2_JAVA_BASE}
 
 ENV DEBIAN_FRONTEND=noninteractive
 ENV MOD_JAR_CACHE=/opt/minecraft_ros2_mod
@@ -32,7 +33,7 @@ RUN <<EOF
     apt-get update
     apt-get install -y \
         openjdk-21-jdk \
-        ros-humble-rviz2 \
+        ros-jazzy-rviz2 \
         xvfb \
         xauth \
         x11-utils \
@@ -80,6 +81,6 @@ RUN install -m 644 headless_xorg.conf /etc/X11/xorg-headless.conf && \
     chmod +x /opt/image_capture/image_bridge.py
 
 COPY --chmod=755 <<EOF runRviz.sh
-    source /opt/ros/humble/setup.bash
+    source /opt/ros/jazzy/setup.bash
     rviz2 -d ./minecraft.rviz
 EOF

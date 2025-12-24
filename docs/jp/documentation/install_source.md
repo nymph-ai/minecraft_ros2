@@ -2,8 +2,8 @@
 
 ## 動作環境
 
-- Ubuntu 22.04
-- ROS 2 Humble
+- Ubuntu 24.04
+- ROS 2 Jazzy
 
 ## ビルドツールのインストール
 
