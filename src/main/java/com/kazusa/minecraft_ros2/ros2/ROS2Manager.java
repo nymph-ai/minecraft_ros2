@@ -32,6 +32,7 @@ public final class ROS2Manager {
     private ExecutorService executorService;
     private TwistSubscriber twistSubscriber;
     private CommandSubscriber commandSubscriber;
+    private InputSubscriber inputSubscriber;
     private ImagePublisher imagePublisher;
     private PointCloudPublisher pointCloudPublisher;
     private IMUPublisher imuPublisher;
@@ -93,6 +94,7 @@ public final class ROS2Manager {
                 
                 // Create subscriber
                 commandSubscriber = new CommandSubscriber();
+                inputSubscriber = new InputSubscriber();
                 if (minecraft_ros2.isDeprecatedWorldContentEnabled()) {
                     spawnEntityService = new SpawnEntityService();
                     digBlockService = new DigBlockService();
@@ -142,6 +144,9 @@ public final class ROS2Manager {
                             }
                             if (commandSubscriber != null) {
                                 RCLJava.spinSome(commandSubscriber);
+                            }
+                            if (inputSubscriber != null) {
+                                RCLJava.spinSome(inputSubscriber);
                             }
                             if (baritoneSubscriber != null) {
                                 RCLJava.spinSome(baritoneSubscriber);
@@ -248,6 +253,7 @@ public final class ROS2Manager {
             
             twistSubscriber = null;
             commandSubscriber = null;
+            inputSubscriber = null;
         }
     }
     

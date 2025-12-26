@@ -196,10 +196,25 @@ start_image_capture() {
     # Source ROS setup (disable error on unbound vars temporarily)
     # The ROS setup script uses unbound variables, so we need to disable -u
     set +u || true
-    source /opt/ros/humble/setup.bash || {
-        echo "[headless] ERROR: Failed to source ROS setup" >&2
+    if [ -n "${ROS_DISTRO:-}" ] && [ -f "/opt/ros/${ROS_DISTRO}/setup.bash" ]; then
+        source "/opt/ros/${ROS_DISTRO}/setup.bash" || {
+            echo "[headless] ERROR: Failed to source ROS setup (${ROS_DISTRO})" >&2
+            return 1
+        }
+    elif [ -f /opt/ros/jazzy/setup.bash ]; then
+        source /opt/ros/jazzy/setup.bash || {
+            echo "[headless] ERROR: Failed to source ROS setup (jazzy)" >&2
+            return 1
+        }
+    elif [ -f /opt/ros/humble/setup.bash ]; then
+        source /opt/ros/humble/setup.bash || {
+            echo "[headless] ERROR: Failed to source ROS setup (humble)" >&2
+            return 1
+        }
+    else
+        echo "[headless] ERROR: No ROS setup.bash found under /opt/ros" >&2
         return 1
-    }
+    fi
     # Leave nounset disabled to avoid ROS setup using unbound variables.
     export IMAGE_TOPIC=${IMAGE_TOPIC:-/player/image_raw}
     export SAVE_IMAGES=${SAVE_IMAGES:-false}
@@ -251,12 +266,31 @@ echo "[headless] image bridge disabled - Foxglove subscribes directly to Java pu
 start_foxglove_bridge() {
     echo "[headless] starting Foxglove bridge for visualization" >&2
     set +u || true
-    source /opt/ros/humble/setup.bash || {
-        echo "[headless] ERROR: Failed to source ROS setup for Foxglove bridge" >&2
+    if [ -n "${ROS_DISTRO:-}" ] && [ -f "/opt/ros/${ROS_DISTRO}/setup.bash" ]; then
+        source "/opt/ros/${ROS_DISTRO}/setup.bash" || {
+            echo "[headless] ERROR: Failed to source ROS setup for Foxglove bridge (${ROS_DISTRO})" >&2
+            return 1
+        }
+    elif [ -f /opt/ros/jazzy/setup.bash ]; then
+        source /opt/ros/jazzy/setup.bash || {
+            echo "[headless] ERROR: Failed to source ROS setup for Foxglove bridge (jazzy)" >&2
+            return 1
+        }
+    elif [ -f /opt/ros/humble/setup.bash ]; then
+        source /opt/ros/humble/setup.bash || {
+            echo "[headless] ERROR: Failed to source ROS setup for Foxglove bridge (humble)" >&2
+            return 1
+        }
+    else
+        echo "[headless] ERROR: No ROS setup.bash found under /opt/ros" >&2
         return 1
-    }
+    fi
     # Leave nounset disabled to avoid ROS setup using unbound variables.
-    if ! command -v ros2 &> /dev/null || ! ros2 pkg list | grep -q foxglove_bridge; then
+    if ! command -v ros2 >/dev/null 2>&1; then
+        echo "[headless] WARNING: ros2 CLI not available, skipping Foxglove bridge" >&2
+        return 0
+    fi
+    if ! ros2 pkg prefix foxglove_bridge >/dev/null 2>&1; then
         echo "[headless] WARNING: Foxglove bridge not installed, skipping" >&2
         return 0
     fi
