@@ -264,6 +264,10 @@ echo "[headless] image bridge disabled - Foxglove subscribes directly to Java pu
 
 # Start Foxglove bridge for visualization (runs in same container for reliable discovery)
 start_foxglove_bridge() {
+    if [ "${FOXGLOVE_BRIDGE_ENABLE:-true}" = "false" ]; then
+        echo "[headless] Foxglove bridge disabled (FOXGLOVE_BRIDGE_ENABLE=false)" >&2
+        return 0
+    fi
     echo "[headless] starting Foxglove bridge for visualization" >&2
     set +u || true
     if [ -n "${ROS_DISTRO:-}" ] && [ -f "/opt/ros/${ROS_DISTRO}/setup.bash" ]; then
