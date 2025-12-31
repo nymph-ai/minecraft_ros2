@@ -6,6 +6,7 @@ import baritone.api.pathing.goals.GoalBlock;
 import baritone.api.pathing.goals.GoalXZ;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
+import net.minecraft.world.entity.player.Player;
 import org.ros2.rcljava.node.BaseComposableNode;
 import org.ros2.rcljava.qos.QoSProfile;
 import org.ros2.rcljava.subscription.Subscription;
@@ -13,6 +14,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import geometry_msgs.msg.PoseStamped;
 import geometry_msgs.msg.PointStamped;
+import java.util.concurrent.TimeUnit;
 
 /**
  * ROS2 Subscriber for Baritone pathfinding commands.
@@ -23,8 +25,17 @@ public class BaritoneSubscriber extends BaseComposableNode {
 
     private final Subscription<PoseStamped> poseGoalSubscription;
     private final Subscription<PointStamped> pointGoalSubscription;
+    private final Subscription<std_msgs.msg.String> followSubscription;
     private final Minecraft minecraft;
     private IBaritone baritone;
+    private String followTargetName;
+    private final double followDistance;
+    private final long followUpdateMs;
+    private final long followStaleMs;
+    private long lastSeenAtMs = 0L;
+    private Double lastSeenX = null;
+    private Double lastSeenZ = null;
+    private long lastMissingLogMs = 0L;
 
     public BaritoneSubscriber() {
         super("baritone_subscriber");
@@ -54,7 +65,22 @@ public class BaritoneSubscriber extends BaseComposableNode {
             QoSProfile.DEFAULT
         );
 
-        LOGGER.info("BaritoneSubscriber initialized - listening on /baritone/goal/pose and /baritone/goal/point");
+        followDistance = parseEnvDouble("BARITONE_FOLLOW_DISTANCE", 3.0);
+        followUpdateMs = parseEnvLong("BARITONE_FOLLOW_UPDATE_MS", 500L);
+        followStaleMs = parseEnvLong("BARITONE_FOLLOW_STALE_MS", 30000L);
+
+        followSubscription = this.node.createSubscription(
+            std_msgs.msg.String.class,
+            "/baritone/follow",
+            this::handleFollowTarget,
+            QoSProfile.DEFAULT
+        );
+
+        this.node.createWallTimer(followUpdateMs, TimeUnit.MILLISECONDS, this::updateFollowGoal);
+
+        LOGGER.info(
+            "BaritoneSubscriber initialized - listening on /baritone/goal/pose, /baritone/goal/point, /baritone/follow"
+        );
     }
 
     /**
@@ -109,6 +135,88 @@ public class BaritoneSubscriber extends BaseComposableNode {
         }
     }
 
+    private void handleFollowTarget(std_msgs.msg.String msg) {
+        if (msg == null) {
+            return;
+        }
+        java.lang.String target = msg.getData();
+        if (target == null || target.trim().isEmpty()) {
+            followTargetName = null;
+            return;
+        }
+        java.lang.String trimmed = target.trim();
+        if (trimmed.equalsIgnoreCase("off") || trimmed.equalsIgnoreCase("stop")) {
+            followTargetName = null;
+            cancelPath();
+            return;
+        }
+        followTargetName = trimmed;
+        LOGGER.info("Baritone follow target set to {}", followTargetName);
+    }
+
+    private void updateFollowGoal() {
+        if (followTargetName == null || baritone == null || minecraft.player == null || minecraft.level == null) {
+            return;
+        }
+
+        long nowMs = System.currentTimeMillis();
+        Player target = null;
+        for (Player player : minecraft.level.players()) {
+            if (player == null || player == minecraft.player) {
+                continue;
+            }
+            if (player.getName().getString().equalsIgnoreCase(followTargetName)) {
+                target = player;
+                break;
+            }
+        }
+        if (target == null) {
+            if (nowMs - lastMissingLogMs > 5000L) {
+                String names = minecraft.level.players().stream()
+                    .filter(p -> p != null && p != minecraft.player)
+                    .map(p -> p.getName().getString())
+                    .reduce((a, b) -> a + ", " + b)
+                    .orElse("(none)");
+                LOGGER.info("Follow target '{}' not visible. Nearby players: {}", followTargetName, names);
+                lastMissingLogMs = nowMs;
+            }
+            if (lastSeenX == null || lastSeenZ == null || nowMs - lastSeenAtMs > followStaleMs) {
+                return;
+            }
+        }
+
+        double botX = minecraft.player.getX();
+        double botZ = minecraft.player.getZ();
+        double targetX;
+        double targetZ;
+        if (target != null) {
+            targetX = target.getX();
+            targetZ = target.getZ();
+            lastSeenX = targetX;
+            lastSeenZ = targetZ;
+            lastSeenAtMs = nowMs;
+        } else {
+            targetX = lastSeenX;
+            targetZ = lastSeenZ;
+        }
+
+        double dx = targetX - botX;
+        double dz = targetZ - botZ;
+        double dist = Math.hypot(dx, dz);
+
+        double goalX = targetX;
+        double goalZ = targetZ;
+        if (dist > 0.001 && followDistance > 0.0) {
+            double scale = followDistance / dist;
+            goalX = targetX - dx * scale;
+            goalZ = targetZ - dz * scale;
+        }
+
+        baritone.getCustomGoalProcess().setGoalAndPath(
+            new GoalXZ((int) Math.floor(goalX), (int) Math.floor(goalZ))
+        );
+    }
+
     /**
      * Cancel current pathfinding
      */
@@ -131,5 +239,29 @@ public class BaritoneSubscriber extends BaseComposableNode {
      */
     public IBaritone getBaritone() {
         return baritone;
+    }
+
+    private static double parseEnvDouble(String name, double fallback) {
+        String value = System.getenv(name);
+        if (value == null || value.isBlank()) {
+            return fallback;
+        }
+        try {
+            return Double.parseDouble(value.trim());
+        } catch (NumberFormatException e) {
+            return fallback;
+        }
+    }
+
+    private static long parseEnvLong(String name, long fallback) {
+        String value = System.getenv(name);
+        if (value == null || value.isBlank()) {
+            return fallback;
+        }
+        try {
+            return Long.parseLong(value.trim());
+        } catch (NumberFormatException e) {
+            return fallback;
+        }
     }
 }
