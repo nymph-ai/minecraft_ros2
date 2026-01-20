@@ -107,17 +107,30 @@ ensure_mod_dir() {
 install_baritone_mod() {
     local dest_dir="/ws/minecraft_ros2/run/mods"
     local baritone_src=""
-    rm -f "${dest_dir}/baritone-api-forge-1.15.0.jar" \
-        "${dest_dir}/baritone-api-neoforge-1.15.0.jar" \
-        "${dest_dir}/baritone-standalone-neoforge-1.15.0.jar"
-    if [ -f "${dest_dir}/baritone-unoptimized-neoforge-1.15.0.jar" ]; then
+    local baritone_glob="baritone-unoptimized-neoforge-*.jar"
+    local fallback_glob="baritone-unoptimized-forge-*.jar"
+    local allow_fallback="${MINECRAFT_ROS2_DEBUG_BARITONE_FALLBACK:-false}"
+    rm -f "${dest_dir}/baritone-api-forge-"*.jar \
+        "${dest_dir}/baritone-api-neoforge-"*.jar \
+        "${dest_dir}/baritone-standalone-neoforge-"*.jar
+    if compgen -G "${dest_dir}/${baritone_glob}" >/dev/null; then
         echo "[headless] Baritone mod jar already present in ${dest_dir}" >&2
         return
     fi
-    if [ -f /opt/minecraft_ros2_libs/baritone-unoptimized-neoforge-1.15.0.jar ]; then
-        baritone_src="/opt/minecraft_ros2_libs/baritone-unoptimized-neoforge-1.15.0.jar"
-    elif [ -f /ws/minecraft_ros2/libs/baritone-unoptimized-neoforge-1.15.0.jar ]; then
-        baritone_src="/ws/minecraft_ros2/libs/baritone-unoptimized-neoforge-1.15.0.jar"
+    if [[ "${allow_fallback}" == "true" ]] && compgen -G "${dest_dir}/${fallback_glob}" >/dev/null; then
+        echo "[headless] Baritone Forge jar already present in ${dest_dir}" >&2
+        return
+    fi
+    if compgen -G "/opt/minecraft_ros2_libs/${baritone_glob}" >/dev/null; then
+        baritone_src=$(ls -1v /opt/minecraft_ros2_libs/${baritone_glob} | tail -n 1)
+    elif compgen -G "/ws/minecraft_ros2/libs/${baritone_glob}" >/dev/null; then
+        baritone_src=$(ls -1v /ws/minecraft_ros2/libs/${baritone_glob} | tail -n 1)
+    elif [[ "${allow_fallback}" == "true" ]] && compgen -G "/opt/minecraft_ros2_libs/${fallback_glob}" >/dev/null; then
+        baritone_src=$(ls -1v /opt/minecraft_ros2_libs/${fallback_glob} | tail -n 1)
+        echo "[headless] using Forge Baritone jar via debug fallback" >&2
+    elif [[ "${allow_fallback}" == "true" ]] && compgen -G "/ws/minecraft_ros2/libs/${fallback_glob}" >/dev/null; then
+        baritone_src=$(ls -1v /ws/minecraft_ros2/libs/${fallback_glob} | tail -n 1)
+        echo "[headless] using Forge Baritone jar via debug fallback" >&2
     fi
     if [ -n "$baritone_src" ]; then
         cp -f "$baritone_src" "$dest_dir/"
@@ -168,6 +181,24 @@ ensure_quickplay_dir() {
 }
 
 ensure_quickplay_dir
+
+# Ensure client options are set for headless automation.
+ensure_client_options() {
+    local base_dir="${MC_GAME_DIR:-/ws/minecraft_ros2/run}"
+    local options_file="${base_dir}/options.txt"
+    local pause_setting="${MC_PAUSE_ON_LOST_FOCUS:-false}"
+    if [ ! -f "${options_file}" ]; then
+        return
+    fi
+    if grep -q "^pauseOnLostFocus:" "${options_file}"; then
+        sed -i "s/^pauseOnLostFocus:.*/pauseOnLostFocus:${pause_setting}/" "${options_file}"
+    else
+        echo "pauseOnLostFocus:${pause_setting}" >> "${options_file}"
+    fi
+    echo "[headless] options.txt: pauseOnLostFocus=${pause_setting}" >&2
+}
+
+ensure_client_options
 
 # Optional: download asset objects into a writable volume (can take time).
 prefetch_assets() {

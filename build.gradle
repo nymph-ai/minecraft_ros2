@@ -113,8 +113,7 @@ dependencies {
 
     // Baritone API for pathfinding and automation (from libs folder)
     // Loaded as a mod at runtime; compile-only to avoid classpath conflicts.
-    // v1.15.0 verified with Minecraft 1.21.11 (NeoForge)
-    compileOnly files('libs/baritone-api-neoforge-1.15.0.jar')
+    compileOnly fileTree(dir: 'libs', include: ['baritone-api-*.jar'])
 }
 
 
