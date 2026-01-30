@@ -48,11 +48,13 @@ public final class ROS2Manager {
     
     private final boolean isClientEnvironment;
     private final String baritoneEnabledEnv;
+    private final String playerStatusEnabledEnv;
 
     private ROS2Manager() {
         // Private constructor for singleton
         this.isClientEnvironment = FMLEnvironment.getDist() == Dist.CLIENT;
         this.baritoneEnabledEnv = System.getenv("MINECRAFT_ROS2_ENABLE_BARITONE");
+        this.playerStatusEnabledEnv = System.getenv("MINECRAFT_ROS2_PLAYER_STATUS_ENABLED");
     }
 
     public ImagePublisher getImagePublisher() {
@@ -119,10 +121,18 @@ public final class ROS2Manager {
                 groundTruthPublisher = new GroundTruthPublisher();
                 surroundingBlockArrayPublisher = new SurroundingBlockArrayPublisher();
 
+                boolean playerStatusEnabled = playerStatusEnabledEnv != null
+                        ? Boolean.parseBoolean(playerStatusEnabledEnv)
+                        : true;
+                if (playerStatusEnabled) {
+                    playerStatusPublisher = new PlayerStatusPublisher();
+                } else {
+                    LOGGER.info("Player status publisher disabled by env");
+                }
+
                 if (Config.COMMON.enableDebugDataStreaming.get()) {
                     LOGGER.info("Debug data stream enabled");
                     livingEntitiesPublisher = new LivingEntitiesPublisher();
-                    playerStatusPublisher = new PlayerStatusPublisher();
                 } else {
                     LOGGER.info("Debug data stream disabled");
                 }

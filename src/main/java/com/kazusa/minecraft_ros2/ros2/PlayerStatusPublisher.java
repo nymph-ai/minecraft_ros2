@@ -6,6 +6,7 @@ import java.util.concurrent.TimeUnit;
 import minecraft_msgs.msg.Item;
 import minecraft_msgs.msg.PlayerStatus;
 import net.minecraft.client.Minecraft;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.world.effect.MobEffect;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.player.Player;
@@ -74,7 +75,7 @@ public class PlayerStatusPublisher extends BaseComposableNode {
                 ItemStack stack = player.getInventory().getItem(i);
                 if (!stack.isEmpty()) {
                     Item item = new Item();
-                    item.setName(stack.getItem().getDescriptionId());
+                    item.setName(resolveItemId(stack));
                     item.setCount((byte) stack.getCount());
                     item.setDamage((short) stack.getDamageValue());
                     item.setMaxDamage((short) stack.getMaxDamage());
@@ -86,7 +87,7 @@ public class PlayerStatusPublisher extends BaseComposableNode {
             ItemStack mainHandStack = player.getItemInHand(InteractionHand.MAIN_HAND);
             if (!mainHandStack.isEmpty()) {
                 Item mainHandItem = new Item();
-                mainHandItem.setName(mainHandStack.getItem().getDescriptionId());
+                mainHandItem.setName(resolveItemId(mainHandStack));
                 mainHandItem.setCount((byte) mainHandStack.getCount());
                 mainHandItem.setDamage((short) mainHandStack.getDamageValue());
                 mainHandItem.setMaxDamage((short) mainHandStack.getMaxDamage());
@@ -98,7 +99,7 @@ public class PlayerStatusPublisher extends BaseComposableNode {
             ItemStack offHandStack = player.getItemInHand(InteractionHand.OFF_HAND);
             if (!offHandStack.isEmpty()) {
                 Item offHandItem = new Item();
-                offHandItem.setName(offHandStack.getItem().getDescriptionId());
+                offHandItem.setName(resolveItemId(offHandStack));
                 offHandItem.setCount((byte) offHandStack.getCount());
                 offHandItem.setDamage((short) offHandStack.getDamageValue());
                 offHandItem.setMaxDamage((short) offHandStack.getMaxDamage());
@@ -114,5 +115,15 @@ public class PlayerStatusPublisher extends BaseComposableNode {
             }
         });
     }
-}
 
+    private String resolveItemId(ItemStack stack) {
+        if (stack == null || stack.isEmpty()) {
+            return "";
+        }
+        var key = BuiltInRegistries.ITEM.getKey(stack.getItem());
+        if (key != null) {
+            return key.toString();
+        }
+        return stack.getItem().getDescriptionId();
+    }
+}

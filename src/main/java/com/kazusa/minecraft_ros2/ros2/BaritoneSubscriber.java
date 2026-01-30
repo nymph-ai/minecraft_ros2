@@ -15,6 +15,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import geometry_msgs.msg.PoseStamped;
 import geometry_msgs.msg.PointStamped;
+import std_msgs.msg.Empty;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -27,6 +28,9 @@ public class BaritoneSubscriber extends BaseComposableNode {
     private final Subscription<PoseStamped> poseGoalSubscription;
     private final Subscription<PointStamped> pointGoalSubscription;
     private final Subscription<std_msgs.msg.String> followSubscription;
+    private final Subscription<Empty> cancelSubscription;
+    private final Subscription<std_msgs.msg.String> commandSubscription;
+    private final org.ros2.rcljava.publisher.Publisher<std_msgs.msg.String> statePublisher;
     private final Minecraft minecraft;
     private IBaritone baritone;
     private final baritone.api.IBaritoneProvider baritoneProvider;
@@ -39,6 +43,7 @@ public class BaritoneSubscriber extends BaseComposableNode {
     private Double lastSeenZ = null;
     private long lastMissingLogMs = 0L;
     private final boolean debugBaritoneCommand;
+    private long lastGoalMs = 0L;
 
     public BaritoneSubscriber() {
         super("baritone_subscriber");
@@ -81,10 +86,27 @@ public class BaritoneSubscriber extends BaseComposableNode {
             QoSProfile.DEFAULT
         );
 
+        cancelSubscription = this.node.createSubscription(
+            Empty.class,
+            "/baritone/cancel",
+            msg -> cancelPath(),
+            QoSProfile.DEFAULT
+        );
+
+        commandSubscription = this.node.createSubscription(
+            std_msgs.msg.String.class,
+            "/baritone/command",
+            this::handleBaritoneCommand,
+            QoSProfile.DEFAULT
+        );
+
+        statePublisher = this.node.createPublisher(std_msgs.msg.String.class, "/baritone/state");
+        this.node.createWallTimer(200, TimeUnit.MILLISECONDS, this::publishState);
+
         this.node.createWallTimer(followUpdateMs, TimeUnit.MILLISECONDS, this::updateFollowGoal);
 
         LOGGER.info(
-            "BaritoneSubscriber initialized - listening on /baritone/goal/pose, /baritone/goal/point, /baritone/follow"
+            "BaritoneSubscriber initialized - listening on /baritone/goal/pose, /baritone/goal/point, /baritone/follow, /baritone/cancel, /baritone/command"
         );
     }
 
@@ -113,6 +135,7 @@ public class BaritoneSubscriber extends BaseComposableNode {
                     logClientState("pose");
                     var customGoalProcess = baritone.getCustomGoalProcess();
                     customGoalProcess.setGoalAndPath(new GoalBlock(targetPos));
+                    lastGoalMs = System.currentTimeMillis();
                     LOGGER.info("Baritone pathfinding started to {}", targetPos);
                     logPathState("pose");
                     schedulePathStateLog("pose", 500);
@@ -156,6 +179,7 @@ public class BaritoneSubscriber extends BaseComposableNode {
                         customGoalProcess.getGoal());
 
                     customGoalProcess.setGoalAndPath(new GoalXZ(goalX, goalZ));
+                    lastGoalMs = System.currentTimeMillis();
 
                     LOGGER.info("Baritone state after: isActive={}, isPathing={}, goal={}",
                         customGoalProcess.isActive(),
@@ -192,6 +216,31 @@ public class BaritoneSubscriber extends BaseComposableNode {
         }
         followTargetName = trimmed;
         LOGGER.info("Baritone follow target set to {}", followTargetName);
+    }
+
+    private void handleBaritoneCommand(std_msgs.msg.String msg) {
+        if (msg == null || msg.getData() == null) {
+            return;
+        }
+        String command = msg.getData().trim();
+        if (command.isEmpty()) {
+            return;
+        }
+        if (!ensureBaritoneReady()) {
+            return;
+        }
+        if (command.startsWith("#")) {
+            command = command.substring(1);
+        }
+        final String commandFinal = command;
+        minecraft.execute(() -> {
+            try {
+                boolean ok = baritone.getCommandManager().execute(commandFinal);
+                LOGGER.info("Baritone command '{}' -> {}", commandFinal, ok);
+            } catch (Exception e) {
+                LOGGER.error("Baritone command failed: {}", commandFinal, e);
+            }
+        });
     }
 
     private void updateFollowGoal() {
@@ -259,6 +308,26 @@ public class BaritoneSubscriber extends BaseComposableNode {
                 new GoalXZ(finalGoalX, finalGoalZ)
             );
         });
+    }
+
+    private void publishState() {
+        if (!ensureBaritoneReady()) {
+            return;
+        }
+        var pathingBehavior = baritone.getPathingBehavior();
+        boolean isPathing = pathingBehavior.isPathing();
+        boolean hasPath = pathingBehavior.getPath().isPresent();
+        String goalStr = String.valueOf(pathingBehavior.getGoal());
+        String msg = String.format(
+            "{\"is_pathing\":%s,\"has_path\":%s,\"goal\":%s,\"last_goal_ms\":%d}",
+            isPathing,
+            hasPath,
+            goalStr == null ? "null" : "\"" + goalStr.replace("\"", "'") + "\"",
+            lastGoalMs
+        );
+        std_msgs.msg.String out = new std_msgs.msg.String();
+        out.setData(msg);
+        statePublisher.publish(out);
     }
 
     /**
