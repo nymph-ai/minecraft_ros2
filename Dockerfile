@@ -73,7 +73,7 @@ COPY bot_controller/image_bridge.py /opt/image_capture/image_bridge.py
 COPY bot_controller/requirements.txt /opt/image_capture/requirements.txt
 
 # Install Python dependencies for image capture
-RUN pip3 install --no-cache-dir -r /opt/image_capture/requirements.txt
+RUN pip3 install --no-cache-dir --root-user-action=ignore -r /opt/image_capture/requirements.txt
 
 RUN install -m 644 headless_xorg.conf /etc/X11/xorg-headless.conf && \
     chmod +x headless_client_entry.sh && \
