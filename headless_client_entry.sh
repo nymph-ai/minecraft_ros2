@@ -219,6 +219,10 @@ prefetch_assets
 
 # Start image capture service in background (runs in same container for reliable discovery)
 start_image_capture() {
+    if [ "${IMAGE_CAPTURE_ENABLE:-false}" != "true" ]; then
+        echo "[headless] image capture service disabled (IMAGE_CAPTURE_ENABLE=false)" >&2
+        return 0
+    fi
     echo "[headless] starting image capture service" >&2
     if [ ! -f /opt/image_capture/image_capture.py ]; then
         echo "[headless] WARNING: image_capture.py not found, skipping image capture service" >&2

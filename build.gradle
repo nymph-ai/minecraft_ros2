@@ -24,18 +24,33 @@ runs {
         modSource project.sourceSets.main
     }
 
-    client {
-        systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
+    // NeoGradle run types can vary by environment/plugin wiring.
+    // Configure them only when they actually exist.
+    def clientRun = findByName('client')
+    if (clientRun != null) {
+        clientRun.systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
     }
 
-    server {
-        systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
-        arguments '--nogui'
+    def serverRun = findByName('server')
+    if (serverRun != null) {
+        serverRun.systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
+        serverRun.arguments '--nogui'
     }
 
-    gameTestServer {
-        systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
+    def gameTestServerRun = findByName('gameTestServer')
+    if (gameTestServerRun != null) {
+        gameTestServerRun.systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
     }
+}
+
+// Keep NeoGradle configuration data out of the project-local .gradle directory.
+// This avoids root-owned file collisions when containerized builds touched the workspace.
+def neoGradleConfigDir = System.getenv('NEOGRADLE_CONFIGURATION_DATA_DIR')
+if (neoGradleConfigDir == null || neoGradleConfigDir.isBlank()) {
+    neoGradleConfigDir = "${gradle.gradleUserHomeDir}/neogradle/configuration/${rootProject.name}"
+}
+configurationData {
+    location neoGradleConfigDir
 }
 
 sourceSets.main.resources {
@@ -60,10 +75,26 @@ repositories {
     }
 }
 
-def ros2JavaPath = System.getenv("ROS2JAVA_INSTALL_PATH")
+def ros2JavaCandidates = []
+def ros2JavaPathFromEnv = System.getenv('ROS2JAVA_INSTALL_PATH')
+if (ros2JavaPathFromEnv != null && !ros2JavaPathFromEnv.isBlank()) {
+    ros2JavaCandidates << ros2JavaPathFromEnv
+}
+ros2JavaCandidates.addAll([
+    "${projectDir}/../ros2_java_ws/install",
+    "${projectDir}/../data/ros2_java_ws/install",
+    "/ws/ros2_java_ws/install",
+    "${System.getProperty('user.home')}/ros2_java_ws/install",
+])
 
+def ros2JavaPath = ros2JavaCandidates.find { candidate ->
+    file(candidate).isDirectory()
+}
 if (ros2JavaPath == null) {
-    throw new GradleException("環境変数 ROS2JAVA_INSTALL_PATH が設定されていません。")
+    throw new GradleException(
+        "ROS2 Java install path not found. Set ROS2JAVA_INSTALL_PATH or create one of: " +
+        ros2JavaCandidates.join(', ')
+    )
 }
 
 // パッケージ名一覧（必要なものをここに列挙）
@@ -89,6 +120,14 @@ def ros2PackageJars = ros2Packages.collect { pkg ->
 
 def ros2MessageJars = ros2Messages.collect { msg ->
     file("${ros2JavaPath}/${msg}/share/${msg}/java/${msg}_messages.jar")
+}
+
+def missingRos2Jars = (ros2PackageJars + ros2MessageJars).findAll { !it.isFile() }
+if (!missingRos2Jars.isEmpty()) {
+    throw new GradleException(
+        "Missing ROS2 Java JAR(s) under ROS2JAVA_INSTALL_PATH=${ros2JavaPath}: " +
+        missingRos2Jars.collect { it.toString() }.join(', ')
+    )
 }
 
 dependencies {
