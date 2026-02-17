@@ -1,5 +1,8 @@
 package com.kazusa.minecraft_ros2.ros2;
 
+import com.mojang.blaze3d.opengl.GlTexture;
+import com.mojang.blaze3d.pipeline.RenderTarget;
+import com.mojang.blaze3d.textures.GpuTexture;
 import net.minecraft.client.Minecraft;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL15;
@@ -15,8 +18,6 @@ import org.slf4j.LoggerFactory;
 import sensor_msgs.msg.CameraInfo;
 import sensor_msgs.msg.Image;
 
-import java.lang.reflect.Field;
-import java.lang.reflect.Method;
 import java.nio.ByteBuffer;
 
 public class ImagePublisher extends BaseComposableNode {
@@ -41,13 +42,14 @@ public class ImagePublisher extends BaseComposableNode {
 
     private int downscaleFboId = 0;
     private int downscaleColorTexId = 0;
+    private int sourceColorFboId = 0;
+    private int sourceColorTextureId = 0;
+    private int sourceColorTextureWidth = 0;
+    private int sourceColorTextureHeight = 0;
     private int downscaleWidth = 0;
     private int downscaleHeight = 0;
     private int pboBytes = 0;
     private long frameCounter = 0L;
-    private Class<?> renderTargetClass = null;
-    private Method renderTargetBindReadMethod = null;
-    private Field renderTargetFboField = null;
     private boolean warnedRenderTargetBinding = false;
 
     public ImagePublisher() {
@@ -64,12 +66,13 @@ public class ImagePublisher extends BaseComposableNode {
 
     public void captureAndPublish() {
         try {
-            if (minecraft.getMainRenderTarget() == null) {
+            RenderTarget renderTarget = minecraft.getMainRenderTarget();
+            if (renderTarget == null || renderTarget.getColorTexture() == null) {
                 return;
             }
 
-            int width = minecraft.getMainRenderTarget().width;
-            int height = minecraft.getMainRenderTarget().height;
+            int width = renderTarget.width;
+            int height = renderTarget.height;
             if (width <= 0 || height <= 0) {
                 return;
             }
@@ -99,7 +102,7 @@ public class ImagePublisher extends BaseComposableNode {
                     return;
                 }
 
-                final int sourceFboId = bindMainRenderTargetForRead();
+                final int sourceFboId = bindMainRenderTargetForRead(renderTarget);
                 if (sourceFboId <= 0) {
                     frameCounter++;
                     return;
@@ -230,77 +233,106 @@ public class ImagePublisher extends BaseComposableNode {
         pboStamps[index] = null;
     }
 
-    private int bindMainRenderTargetForRead() {
-        Object renderTarget = minecraft.getMainRenderTarget();
-        if (renderTarget == null) {
+    private int bindMainRenderTargetForRead(RenderTarget renderTarget) {
+        GpuTexture colorTexture = renderTarget.getColorTexture();
+        if (colorTexture == null) {
+            return 0;
+        }
+        if (!(colorTexture instanceof GlTexture glTexture)) {
+            final int implicitRead = GL11.glGetInteger(GL30.GL_READ_FRAMEBUFFER_BINDING);
+            if (implicitRead > 0 && isFramebufferUsable(implicitRead)) {
+                if (!warnedRenderTargetBinding) {
+                    LOGGER.warn("Main render target color texture is not a GL texture (type={}); using current READ framebuffer {} as fallback",
+                            colorTexture.getClass().getName(), implicitRead);
+                    warnedRenderTargetBinding = true;
+                }
+                return implicitRead;
+            }
+            if (!warnedRenderTargetBinding) {
+                LOGGER.warn("Main render target color texture is not a GL texture (type={}); capture will wait for a backend-specific implementation",
+                        colorTexture.getClass().getName());
+                warnedRenderTargetBinding = true;
+            }
             return 0;
         }
 
-        refreshRenderTargetAccessors(renderTarget);
-        if (renderTargetBindReadMethod != null) {
-            try {
-                renderTargetBindReadMethod.invoke(renderTarget);
-                int bound = GL11.glGetInteger(GL30.GL_READ_FRAMEBUFFER_BINDING);
-                if (bound > 0) {
-                    return bound;
-                }
-            } catch (Exception ignored) {
-                // Fall through to field-based binding.
-            }
+        final int width = renderTarget.width;
+        final int height = renderTarget.height;
+        if (width <= 0 || height <= 0) {
+            return 0;
         }
 
-        if (renderTargetFboField != null) {
-            try {
-                int fboId = renderTargetFboField.getInt(renderTarget);
-                if (fboId > 0) {
-                    GL30.glBindFramebuffer(GL30.GL_READ_FRAMEBUFFER, fboId);
-                    return fboId;
-                }
-            } catch (Exception ignored) {
-                // Fall through to warning.
-            }
+        final int colorTextureId = glTexture.glId();
+        if (colorTextureId <= 0) {
+            return 0;
         }
 
-        if (!warnedRenderTargetBinding) {
-            LOGGER.warn("Failed to bind explicit main render target FBO; skipping capture to avoid brittle implicit FBO reads");
-            warnedRenderTargetBinding = true;
+        if (sourceColorFboId != 0
+                && sourceColorTextureId == colorTextureId
+                && sourceColorTextureWidth == width
+                && sourceColorTextureHeight == height) {
+            return sourceColorFboId;
         }
-        return 0;
+
+        releaseSourceColorFbo();
+        sourceColorFboId = GL30.glGenFramebuffers();
+        sourceColorTextureId = colorTextureId;
+        sourceColorTextureWidth = width;
+        sourceColorTextureHeight = height;
+
+        final int prevFbo = GL30.glGetInteger(GL30.GL_FRAMEBUFFER_BINDING);
+        GL30.glBindFramebuffer(GL30.GL_FRAMEBUFFER, sourceColorFboId);
+        GL30.glFramebufferTexture2D(
+                GL30.GL_FRAMEBUFFER,
+                GL30.GL_COLOR_ATTACHMENT0,
+                GL11.GL_TEXTURE_2D,
+                colorTextureId,
+                0);
+
+        int status = GL30.glCheckFramebufferStatus(GL30.GL_FRAMEBUFFER);
+        GL30.glBindFramebuffer(GL30.GL_FRAMEBUFFER, prevFbo);
+
+        if (status != GL30.GL_FRAMEBUFFER_COMPLETE) {
+            final int implicitRead = GL11.glGetInteger(GL30.GL_READ_FRAMEBUFFER_BINDING);
+            if (implicitRead > 0 && isFramebufferUsable(implicitRead)) {
+                if (!warnedRenderTargetBinding) {
+                    LOGGER.warn("Capture source FBO unavailable (status={}); using current READ framebuffer {} as fallback", status, implicitRead);
+                    warnedRenderTargetBinding = true;
+                }
+                releaseSourceColorFbo();
+                return implicitRead;
+            }
+
+            LOGGER.warn("Failed to build capture source FBO for main render target: status={}", status);
+            releaseSourceColorFbo();
+            if (!warnedRenderTargetBinding) {
+                warnedRenderTargetBinding = true;
+            }
+            return 0;
+        }
+
+        return sourceColorFboId;
     }
 
-    private void refreshRenderTargetAccessors(Object renderTarget) {
-        Class<?> cls = renderTarget.getClass();
-        if (cls == renderTargetClass) {
-            return;
+    private void releaseSourceColorFbo() {
+        if (sourceColorFboId != 0) {
+            GL30.glDeleteFramebuffers(sourceColorFboId);
+            sourceColorFboId = 0;
         }
+        sourceColorTextureId = 0;
+        sourceColorTextureWidth = 0;
+        sourceColorTextureHeight = 0;
+    }
 
-        renderTargetClass = cls;
-        renderTargetBindReadMethod = null;
-        renderTargetFboField = null;
-
-        try {
-            renderTargetBindReadMethod = cls.getMethod("bindRead");
-        } catch (NoSuchMethodException ignored) {
-            // Some mappings expose only the framebuffer id field.
+    private boolean isFramebufferUsable(int fboId) {
+        if (fboId <= 0) {
+            return false;
         }
-
-        final String[] fieldNames = {"frameBufferId", "framebufferId", "fboId"};
-        for (String fieldName : fieldNames) {
-            Class<?> current = cls;
-            while (current != null) {
-                try {
-                    Field field = current.getDeclaredField(fieldName);
-                    if (field.getType() == int.class) {
-                        field.setAccessible(true);
-                        renderTargetFboField = field;
-                        return;
-                    }
-                } catch (NoSuchFieldException ignored) {
-                    // Continue scanning.
-                }
-                current = current.getSuperclass();
-            }
-        }
+        final int previousReadFbo = GL11.glGetInteger(GL30.GL_READ_FRAMEBUFFER_BINDING);
+        GL30.glBindFramebuffer(GL30.GL_READ_FRAMEBUFFER, fboId);
+        int status = GL30.glCheckFramebufferStatus(GL30.GL_FRAMEBUFFER);
+        GL30.glBindFramebuffer(GL30.GL_READ_FRAMEBUFFER, previousReadFbo);
+        return status == GL30.GL_FRAMEBUFFER_COMPLETE;
     }
 
     private void publishFrame(byte[] rgbData, int width, int height, builtin_interfaces.msg.Time stamp) {
@@ -369,6 +401,7 @@ public class ImagePublisher extends BaseComposableNode {
     }
 
     private void releaseDownscaleTarget() {
+        releaseSourceColorFbo();
         if (downscaleFboId != 0) {
             GL30.glDeleteFramebuffers(downscaleFboId);
             downscaleFboId = 0;
