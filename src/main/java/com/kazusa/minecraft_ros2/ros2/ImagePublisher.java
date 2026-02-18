@@ -330,7 +330,7 @@ public class ImagePublisher extends BaseComposableNode {
         }
         final int previousReadFbo = GL11.glGetInteger(GL30.GL_READ_FRAMEBUFFER_BINDING);
         GL30.glBindFramebuffer(GL30.GL_READ_FRAMEBUFFER, fboId);
-        int status = GL30.glCheckFramebufferStatus(GL30.GL_FRAMEBUFFER);
+        int status = GL30.glCheckFramebufferStatus(GL30.GL_READ_FRAMEBUFFER);
         GL30.glBindFramebuffer(GL30.GL_READ_FRAMEBUFFER, previousReadFbo);
         return status == GL30.GL_FRAMEBUFFER_COMPLETE;
     }
